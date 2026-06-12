@@ -49,7 +49,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/0/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/0/epsilon_orders/0",
+            "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "0",
@@ -66,7 +74,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/0/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/0/epsilon_orders/1",
+            "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "0",
@@ -83,7 +99,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/0/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/0/epsilon_orders/2",
+            "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "0",
@@ -100,7 +124,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/0/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/0/epsilon_orders/3",
+            "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "0",
@@ -117,7 +149,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/0/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/0/epsilon_orders/4",
+            "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
@@ -145,7 +185,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/1/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/1/epsilon_orders/0",
+            "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "0",
@@ -162,7 +210,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/1/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/1/epsilon_orders/1",
+            "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "0",
@@ -179,7 +235,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/1/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/1/epsilon_orders/2",
+            "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "0",
@@ -196,7 +260,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/1/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/1/epsilon_orders/3",
+            "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "0",
@@ -213,7 +285,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/1/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/1/epsilon_orders/4",
+            "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[0,1,1,1,1,0,0,0,0]",
@@ -241,7 +321,15 @@
           "real_relative_error_abs": "2.08000000000000000000000000000000000040473048227798601910858389714079999999999999999915816059686178908025414549394713600E-48",
           "relative_error_abs": "2.08000000000000000000000000000000000040473048227798601910858389714079999999999999999915816059686178908025414549394713600E-48",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/2/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/2/epsilon_orders/0",
+            "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+            "order": -1
+          }
         },
         {
           "amflow_imag": "-0.0218166156499291197115461346061076589180358986067715682012148930021376139151194147214629932783359680299392082498797",
@@ -258,7 +346,15 @@
           "real_relative_error_abs": "2.06311058974095723205948210742258120844589040690477952522484851696089553011246243054781143312078369236160942194314792798E-49",
           "relative_error_abs": "1.68077411818661907582976079090235506035173928544618119742463573592722533972065848341547724287610194404023376989603691835E-49",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/2/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/2/epsilon_orders/1",
+            "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "-0.2611089574792038671395750747021949267790154738008413008433909491668376732319598369492578651511977657752682673732543",
@@ -275,7 +371,15 @@
           "real_relative_error_abs": "1.92184354421899533510622265177603543359357876792519471916928297426505399857670167804506221322909047984336566027162703142E-50",
           "relative_error_abs": "1.22791260982430152933547610835049399942267630164649401831148340306867010578510000702689832607411322959418202627789186116E-50",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/2/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/2/epsilon_orders/2",
+            "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "-2.5140932174872490324131409071072689695175389516364423654623449398129138386202011434065587520670474607471960641529023",
@@ -292,7 +396,15 @@
           "real_relative_error_abs": "7.33281523001609167158653126991984388225243837889869059037110437498291868433815752215730133755020565220260586683264518430E-51",
           "relative_error_abs": "2.95532741388618868746973869266488714094746227334752707477501569033028830300601355686537000620782887668868015735530304820E-51",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/2/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/2/epsilon_orders/3",
+            "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "-17.62281631474119338151882183401704223005",
@@ -309,7 +421,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/2/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/2/epsilon_orders/4",
+            "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "-121.91006488442179479345040504317629431635",
@@ -326,7 +446,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/2/coefficients/5",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/2/epsilon_orders/5",
+            "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
@@ -354,7 +482,15 @@
           "real_relative_error_abs": "2.80000000000000000000000000000000000040473048227798601910858389711199999999999999999886675464962163914649596508808640000E-48",
           "relative_error_abs": "2.80000000000000000000000000000000000040473048227798601910858389711199999999999999999886675464962163914649596508808640000E-48",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/3/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/3/epsilon_orders/0",
+            "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+            "order": -1
+          }
         },
         {
           "amflow_imag": "-0.0261799387799149436538553615273291907016430783281258818414578716025651366981432976657555919340031616359270498998557",
@@ -371,7 +507,15 @@
           "real_relative_error_abs": "8.59937522099259528850559796460045283040112340197848267913481913197598146417499864829924564541574170274052082996340533236E-50",
           "relative_error_abs": "1.54547269215067082105828164349738737740597823275828037876531452873802153615661237312790338562540173733658662343185932167E-49",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/3/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/3/epsilon_orders/1",
+            "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "-0.3133307489750446405674900896426339121348185685610095610120691390002052078783518043391094381814373189303219208479052",
@@ -388,7 +532,15 @@
           "real_relative_error_abs": "3.60352208559398362166111732814512796135285507016833945594422846149468020296772127750095799761882395696545503708782701766E-50",
           "relative_error_abs": "3.26410688773703394294375519589099004747444047453277162718124929329583057154613370802876876284165288073729726782163720884E-50",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/3/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/3/epsilon_orders/2",
+            "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "-3.0169118609846988388957690885287227634210467419637308385548139277754966063442413720878705024804569528966352769834828",
@@ -405,7 +557,15 @@
           "real_relative_error_abs": "9.80831566844157564312581813983752554162902808957449738388983267437850039384538455420217026768932691045386746396971797375E-52",
           "relative_error_abs": "4.56691456697585877259902009379344766202382592581339515149050269188702739402712022535376448128364078354310679862015976587E-52",
           "component_digit_floor": 51,
-          "non_sentinel_component_digit_floor": 51
+          "non_sentinel_component_digit_floor": 51,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/3/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/3/epsilon_orders/3",
+            "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "-21.14737957768943205782258620082045067606",
@@ -422,7 +582,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/3/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/3/epsilon_orders/4",
+            "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "-146.29207786130615375214048605181155317962",
@@ -439,7 +607,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/3/coefficients/5",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/3/epsilon_orders/5",
+            "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[1,1,1,0,1,0,0,0,0]",
@@ -467,7 +643,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/4/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/4/epsilon_orders/0",
+            "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+            "order": -2
+          }
         },
         {
           "amflow_imag": "-0.26179938779914943653855361527329190702",
@@ -484,7 +668,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/4/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/4/epsilon_orders/1",
+            "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+            "order": -1
+          }
         },
         {
           "amflow_imag": "-1.62563542412000624196287066287026509645",
@@ -501,7 +693,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/4/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/4/epsilon_orders/2",
+            "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "-23.26990003478387875928902884791763427119",
@@ -518,7 +718,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/4/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/4/epsilon_orders/3",
+            "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "-123.56621029247546971432912803307797606235",
@@ -535,7 +743,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/4/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/4/epsilon_orders/4",
+            "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "-1210.10859607255656614961565338237698446766",
@@ -552,7 +768,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/4/coefficients/5",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/4/epsilon_orders/5",
+            "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "-5977.83499272366218244447826180822117879209",
@@ -569,7 +793,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/4/coefficients/6",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/4/epsilon_orders/6",
+            "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
@@ -597,7 +829,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/5/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/5/epsilon_orders/0",
+            "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+            "order": -2
+          }
         },
         {
           "amflow_imag": "-0.26179938779914943653855361527329190702",
@@ -614,7 +854,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/5/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/5/epsilon_orders/1",
+            "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+            "order": -1
+          }
         },
         {
           "amflow_imag": "-1.62563542412000624196287066287026509645",
@@ -631,7 +879,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/5/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/5/epsilon_orders/2",
+            "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "-23.26990003478387875928902884791763427119",
@@ -648,7 +904,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/5/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/5/epsilon_orders/3",
+            "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "-123.56621029247546971432912803307797606235",
@@ -665,7 +929,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/5/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/5/epsilon_orders/4",
+            "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "-1210.10859607255656614961565338237698446766",
@@ -682,7 +954,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/5/coefficients/5",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/5/epsilon_orders/5",
+            "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "-5977.83499272366218244447826180822117879209",
@@ -699,7 +979,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/5/coefficients/6",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/5/epsilon_orders/6",
+            "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
@@ -727,7 +1015,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/6/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/6/epsilon_orders/0",
+            "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+            "order": -2
+          }
         },
         {
           "amflow_imag": "0.0523598775598298873077107230546583814",
@@ -744,7 +1040,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/6/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/6/epsilon_orders/1",
+            "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+            "order": -1
+          }
         },
         {
           "amflow_imag": "0.31640043856402960050795567873160995572",
@@ -761,7 +1065,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/6/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/6/epsilon_orders/2",
+            "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "4.60111666033034016366583849520244878095",
@@ -778,7 +1090,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/6/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/6/epsilon_orders/3",
+            "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "23.92039412060323393516257589978643330641",
@@ -795,7 +1115,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/6/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/6/epsilon_orders/4",
+            "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "237.65349030027912198311582026384173018704",
@@ -812,7 +1140,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/6/coefficients/5",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/6/epsilon_orders/5",
+            "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "1152.01105145601886895841970455297496318142",
@@ -829,7 +1165,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/6/coefficients/6",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/6/epsilon_orders/6",
+            "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
@@ -857,7 +1201,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/7/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/7/epsilon_orders/0",
+            "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+            "order": -2
+          }
         },
         {
           "amflow_imag": "0.26179938779914943653855361527329190702",
@@ -874,7 +1226,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/7/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/7/epsilon_orders/1",
+            "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+            "order": -1
+          }
         },
         {
           "amflow_imag": "1.66926865541986448138596293208248041429",
@@ -891,7 +1251,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/7/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/7/epsilon_orders/2",
+            "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "23.79211794974228649356817899732202412475",
@@ -908,7 +1276,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/7/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/7/epsilon_orders/3",
+            "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "128.59439672744996777915540984729251400138",
@@ -925,7 +1301,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/7/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/7/epsilon_orders/4",
+            "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "1245.35422870203895291265329705041106892775",
@@ -942,7 +1326,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/7/coefficients/5",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/7/epsilon_orders/5",
+            "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "6221.6551224925057720313790718945737674248",
@@ -959,7 +1351,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/7/coefficients/6",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/7/epsilon_orders/6",
+            "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
@@ -987,7 +1387,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/8/coefficients/0",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/8/epsilon_orders/0",
+            "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+            "order": -2
+          }
         },
         {
           "amflow_imag": "-0.52359877559829887307710723054658381403",
@@ -1004,7 +1412,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/8/coefficients/1",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/8/epsilon_orders/1",
+            "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+            "order": -1
+          }
         },
         {
           "amflow_imag": "-3.28617743327989907546421514111030244718",
@@ -1021,7 +1437,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/8/coefficients/2",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/8/epsilon_orders/2",
+            "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+            "order": 0
+          }
         },
         {
           "amflow_imag": "-46.95757440153448370600137781535878042523",
@@ -1038,7 +1462,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/8/coefficients/3",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/8/epsilon_orders/3",
+            "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+            "order": 1
+          }
         },
         {
           "amflow_imag": "-251.15496973293053788051928151752758247592",
@@ -1055,7 +1487,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/8/coefficients/4",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/8/epsilon_orders/4",
+            "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+            "order": 2
+          }
         },
         {
           "amflow_imag": "-2448.41369824869904170966142169918123650339",
@@ -1072,7 +1512,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/8/coefficients/5",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/8/epsilon_orders/5",
+            "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+            "order": 3
+          }
         },
         {
           "amflow_imag": "-12150.72608926239923655847717168552442849035",
@@ -1089,7 +1537,15 @@
           "real_relative_error_abs": "0",
           "relative_error_abs": "0",
           "component_digit_floor": 999,
-          "non_sentinel_component_digit_floor": null
+          "non_sentinel_component_digit_floor": null,
+          "witness_reference": {
+            "comparison_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+            "comparison_json_pointer": "#/integrals/8/coefficients/6",
+            "cpp_result_artifact": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json",
+            "cpp_result_json_pointer": "#/results/8/epsilon_orders/6",
+            "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+            "order": 4
+          }
         }
       ],
       "integral": "gauge[1,1,1,1,1,0,0,0,0]",

@@ -5,12 +5,18 @@ from __future__ import annotations
 
 import argparse
 import copy
+from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 from audit_b64ag_golden_recapture_readiness import (
+    EXPECTED_ORDERS,
+    EXPECTED_PACKET_TARGETS,
+    REQUIRED_COEFFICIENT_ROWS,
+    REQUIRED_DIGITS,
+    REQUIRED_EPSILON_SAMPLES,
     audit_b64ag_golden_recapture_readiness,
 )
 from compare_cpp_vs_amflow import compare_cpp_vs_amflow
@@ -49,6 +55,7 @@ B64AG_REVIEWED_FIRST_BLOCK_GOLDEN_SLICE = Path(
     "linear_propagator.first-block-cache-fit.amflow-golden.txt"
 )
 B64AG_SOURCE_COMMIT = "c10724f6b74c2f54353a610023d3b6eac9bd45ca"
+B64AG_EVIDENCE_BASELINE_COMMIT = "6976c084c9536cf7867d97c5ab4a4adda3481f43"
 M6_CLOSURE_COMMIT = "e69a8c8094fbc6c58622f0d40da75e1a86b4b45a"
 M6_SOURCE_PROVENANCE_SHA256 = "840ad1bd00cd8712ae63ad62e1cfbe54530245b8d49d65bd07c271973345413a"
 IGNORED_M6_PROVENANCE_FIELDS = {
@@ -109,6 +116,77 @@ def normalized_m6_summary(payload: dict[str, Any]) -> dict[str, Any]:
 
 def require_path(raw: Any, expected: Path, label: str) -> None:
     expect(raw == str(expected), f"{label} must be {expected}, got {raw!r}")
+
+
+def require_object(payload: dict[str, Any], field: str, label: str) -> dict[str, Any]:
+    value = payload.get(field)
+    expect(isinstance(value, dict), f"{label}.{field} must be an object")
+    return value
+
+
+def require_list(payload: dict[str, Any], field: str, label: str) -> list[Any]:
+    value = payload.get(field)
+    expect(isinstance(value, list), f"{label}.{field} must be a list")
+    return value
+
+
+def require_string(payload: dict[str, Any], field: str, label: str) -> str:
+    value = payload.get(field)
+    expect(isinstance(value, str) and value.strip(), f"{label}.{field} must be a non-empty string")
+    return value
+
+
+def require_bool(payload: dict[str, Any], field: str, label: str) -> bool:
+    value = payload.get(field)
+    expect(type(value) is bool, f"{label}.{field} must be a bool")
+    return value
+
+
+def require_int(payload: dict[str, Any], field: str, label: str) -> int:
+    value = payload.get(field)
+    expect(type(value) is int, f"{label}.{field} must be an int")
+    return value
+
+
+def require_string_list(payload: dict[str, Any], field: str, label: str) -> list[str]:
+    values = require_list(payload, field, label)
+    for index, value in enumerate(values):
+        expect(
+            isinstance(value, str) and value.strip(),
+            f"{label}.{field}[{index}] must be a non-empty string",
+        )
+    return values
+
+
+def resolve_json_pointer(document: Any, pointer: str, label: str) -> Any:
+    expect(isinstance(pointer, str), f"{label} must be a JSON pointer string")
+    if pointer.startswith("#/"):
+        pointer = pointer[1:]
+    expect(pointer.startswith("/"), f"{label} must start with '/'")
+    current = document
+    if pointer == "/":
+        return current
+    for raw_token in pointer.split("/")[1:]:
+        token = raw_token.replace("~1", "/").replace("~0", "~")
+        if isinstance(current, list):
+            expect(token.isdigit(), f"{label} list token must be numeric: {token!r}")
+            index = int(token)
+            expect(index < len(current), f"{label} list token out of range: {index}")
+            current = current[index]
+            continue
+        expect(isinstance(current, dict), f"{label} traversed into non-container")
+        expect(token in current, f"{label} missing object key: {token}")
+        current = current[token]
+    return current
+
+
+def decimal_strings_equal(left: Any, right: Any) -> bool:
+    if not isinstance(left, str) or not isinstance(right, str):
+        return False
+    try:
+        return Decimal(left) == Decimal(right)
+    except InvalidOperation:
+        return left == right
 
 
 def require_ready_m6_summary(root: Path, m6_summary: dict[str, Any]) -> None:
@@ -265,41 +343,402 @@ def require_semantic_comparison_match(
     )
 
 
-def require_b64ag_closure_evidence(root: Path) -> None:
-    evidence = load_json(root / B64AG_EVIDENCE)
+def require_b64ag_runtime_provenance(evidence: dict[str, Any]) -> None:
+    provenance = require_object(evidence, "runtime_provenance", "b64ag evidence")
+    expect(
+        require_bool(provenance, "final_solution_samples_used_as_input", "b64ag runtime_provenance")
+        is False,
+        "b64ag runtime_provenance.final_solution_samples_used_as_input must be false",
+    )
+    expect(
+        require_bool(provenance, "full_eta_zero_contour_applied", "b64ag runtime_provenance")
+        is True,
+        "b64ag runtime_provenance.full_eta_zero_contour_applied must be true",
+    )
+    expect(
+        require_bool(provenance, "transport_applied", "b64ag runtime_provenance") is True,
+        "b64ag runtime_provenance.transport_applied must be true",
+    )
+    expect(
+        require_int(provenance, "epsilon_order", "b64ag runtime_provenance") == 4,
+        "b64ag runtime_provenance.epsilon_order must be 4",
+    )
+    expect(
+        require_int(provenance, "epsilon_sample_count", "b64ag runtime_provenance")
+        == REQUIRED_EPSILON_SAMPLES,
+        "b64ag runtime_provenance.epsilon_sample_count drifted",
+    )
+    expect(
+        require_int(provenance, "precision_digits", "b64ag runtime_provenance")
+        >= REQUIRED_DIGITS,
+        "b64ag runtime_provenance.precision_digits is below the floor",
+    )
+    expect(
+        provenance.get("blocked_reason") == "",
+        "b64ag runtime_provenance.blocked_reason must be empty",
+    )
+    expect(
+        require_string(provenance, "runtime_application", "b64ag runtime_provenance")
+        == "b64ag-gauge-link-full-packet-finite-part-coefficients",
+        "b64ag runtime_provenance.runtime_application drifted",
+    )
+    expect(
+        require_string(provenance, "runtime_boundary_provider", "b64ag runtime_provenance")
+        == "retained-finite-gauge-link-boundary+gaugex-zero-full-packet-finite-part-transport",
+        "b64ag runtime_provenance.runtime_boundary_provider drifted",
+    )
+    expect(
+        require_string(provenance, "transport_scope", "b64ag runtime_provenance")
+        == "eta-zero-b64ag-full-packet-finite-part-coefficients",
+        "b64ag runtime_provenance.transport_scope drifted",
+    )
+
+
+def require_b64ag_role_verdicts(evidence: dict[str, Any]) -> None:
+    role_verdicts = require_object(evidence, "role_verdicts", "b64ag evidence")
+    for role in ("role_a", "role_b", "role_c", "role_d"):
+        verdict = require_string(role_verdicts, role, "b64ag role_verdicts")
+        expect(verdict.startswith("APPROVE "), f"b64ag {role} must approve the packet")
+    expect(
+        require_string(role_verdicts, "unanimous", "b64ag role_verdicts") == "APPROVE",
+        "b64ag role verdicts must be unanimous APPROVE",
+    )
+
+
+def component_floor(row: dict[str, Any]) -> tuple[int, int | None]:
+    real_digits = require_int(row, "real_agreement_digits", "b64ag coefficient")
+    imag_digits = require_int(row, "imag_agreement_digits", "b64ag coefficient")
+    floor = min(real_digits, imag_digits)
+    non_sentinel = [value for value in (real_digits, imag_digits) if value != 999]
+    return floor, min(non_sentinel) if non_sentinel else None
+
+
+def require_b64ag_coefficient_witness(
+    coefficient: dict[str, Any],
+    *,
+    integral: str,
+    integral_index: int,
+    coefficient_index: int,
+    committed_compare: dict[str, Any],
+    committed_cpp: dict[str, Any],
+) -> tuple[int, int | None]:
+    label = f"b64ag coefficient {integral}#{coefficient_index}"
+    witness = require_object(coefficient, "witness_reference", label)
+    require_path(
+        witness.get("comparison_artifact"),
+        B64AG_COMPARE50,
+        f"{label} witness comparison_artifact",
+    )
+    require_path(
+        witness.get("cpp_result_artifact"),
+        B64AG_CPP_RESULT,
+        f"{label} witness cpp_result_artifact",
+    )
+    expected_comparison_pointer = f"#/integrals/{integral_index}/coefficients/{coefficient_index}"
+    expected_cpp_pointer = f"#/results/{integral_index}/epsilon_orders/{coefficient_index}"
+    expect(
+        witness.get("comparison_json_pointer") == expected_comparison_pointer,
+        f"{label} comparison witness pointer drifted",
+    )
+    expect(
+        witness.get("cpp_result_json_pointer") == expected_cpp_pointer,
+        f"{label} C++ witness pointer drifted",
+    )
+    expect(witness.get("integral") == integral, f"{label} witness integral drifted")
+    expect(witness.get("order") == coefficient.get("order"), f"{label} witness order drifted")
+
+    comparison_integral = resolve_json_pointer(
+        committed_compare,
+        f"/integrals/{integral_index}",
+        f"{label} comparison integral witness",
+    )
+    expect(
+        isinstance(comparison_integral, dict) and comparison_integral.get("integral") == integral,
+        f"{label} comparison witness integral mismatch",
+    )
+    comparison_row = resolve_json_pointer(
+        committed_compare,
+        expected_comparison_pointer,
+        f"{label} comparison row witness",
+    )
+    expect(isinstance(comparison_row, dict), f"{label} comparison row witness must be an object")
+    for field in (
+        "order",
+        "cpp_real",
+        "cpp_imag",
+        "amflow_real",
+        "amflow_imag",
+        "cpp_present",
+        "amflow_present",
+        "real_agreement_digits",
+        "imag_agreement_digits",
+        "real_relative_error_abs",
+        "imag_relative_error_abs",
+        "relative_error_abs",
+        "passed",
+    ):
+        expect(
+            coefficient.get(field) == comparison_row.get(field),
+            f"{label} field drifted from comparison witness: {field}",
+        )
+    expect(comparison_row.get("cpp_present") is True, f"{label} C++ presence must be true")
+    expect(comparison_row.get("amflow_present") is True, f"{label} AMFlow presence must be true")
+    expect(comparison_row.get("passed") is True, f"{label} comparison row must pass")
+
+    cpp_integral = resolve_json_pointer(
+        committed_cpp,
+        f"/results/{integral_index}",
+        f"{label} C++ integral witness",
+    )
+    expect(
+        isinstance(cpp_integral, dict) and cpp_integral.get("integral") == integral,
+        f"{label} C++ witness integral mismatch",
+    )
+    cpp_row = resolve_json_pointer(
+        committed_cpp,
+        expected_cpp_pointer,
+        f"{label} C++ coefficient witness",
+    )
+    expect(isinstance(cpp_row, dict), f"{label} C++ coefficient witness must be an object")
+    expect(cpp_row.get("order") == coefficient.get("order"), f"{label} C++ witness order drifted")
+    expect(
+        decimal_strings_equal(cpp_row.get("real_digits"), coefficient.get("cpp_real")),
+        f"{label} C++ real value drifted",
+    )
+    expect(
+        decimal_strings_equal(cpp_row.get("imag_digits"), coefficient.get("cpp_imag")),
+        f"{label} C++ imag value drifted",
+    )
+
+    floor, non_sentinel_floor = component_floor(coefficient)
+    expect(
+        coefficient.get("component_digit_floor") == floor,
+        f"{label} component_digit_floor drifted",
+    )
+    expect(
+        coefficient.get("non_sentinel_component_digit_floor") == non_sentinel_floor,
+        f"{label} non_sentinel_component_digit_floor drifted",
+    )
+    return floor, non_sentinel_floor
+
+
+def require_b64ag_per_coefficient_evidence(
+    evidence: dict[str, Any],
+    committed_compare: dict[str, Any],
+    committed_cpp: dict[str, Any],
+) -> dict[str, Any]:
+    per_integral = require_list(evidence, "per_integral_digit_evidence", "b64ag evidence")
+    expect(len(per_integral) == len(EXPECTED_PACKET_TARGETS), "b64ag evidence target count drifted")
+    total_coefficients = 0
+    total_passed = 0
+    direct_count = 0
+    reviewed_count = 0
+    component_floors: list[int] = []
+    non_sentinel_floors: list[int] = []
+    direct_non_sentinel_floors: list[int] = []
+    reviewed_component_floors: list[int] = []
+    for integral_index, raw_integral in enumerate(per_integral):
+        expect(isinstance(raw_integral, dict), "b64ag per-integral evidence entries must be objects")
+        integral = require_string(raw_integral, "integral", "b64ag per-integral evidence")
+        expect(
+            integral == EXPECTED_PACKET_TARGETS[integral_index],
+            f"b64ag per-integral target order drifted at {integral_index}",
+        )
+        coefficients = require_list(raw_integral, "coefficients", f"b64ag per-integral {integral}")
+        expect(
+            len(coefficients) == len(EXPECTED_ORDERS[integral]),
+            f"b64ag {integral} coefficient count drifted",
+        )
+        expect(
+            require_int(raw_integral, "coefficient_count", f"b64ag per-integral {integral}")
+            == len(coefficients),
+            f"b64ag {integral} coefficient_count field drifted",
+        )
+        expect(
+            require_int(raw_integral, "passed_coefficient_count", f"b64ag per-integral {integral}")
+            == len(coefficients),
+            f"b64ag {integral} passed_coefficient_count field drifted",
+        )
+        classification = require_string(raw_integral, "classification", f"b64ag per-integral {integral}")
+        expect(
+            classification
+            in {"direct-first-block-reviewed-row", "zero-or-reviewed-table-row"},
+            f"b64ag {integral} classification drifted",
+        )
+        integral_component_floors: list[int] = []
+        integral_non_sentinel_floors: list[int] = []
+        observed_orders: list[int] = []
+        for coefficient_index, raw_coefficient in enumerate(coefficients):
+            expect(isinstance(raw_coefficient, dict), f"b64ag {integral} coefficient must be an object")
+            floor, non_sentinel_floor = require_b64ag_coefficient_witness(
+                raw_coefficient,
+                integral=integral,
+                integral_index=integral_index,
+                coefficient_index=coefficient_index,
+                committed_compare=committed_compare,
+                committed_cpp=committed_cpp,
+            )
+            observed_orders.append(require_int(raw_coefficient, "order", f"b64ag {integral} coefficient"))
+            integral_component_floors.append(floor)
+            component_floors.append(floor)
+            if non_sentinel_floor is not None:
+                integral_non_sentinel_floors.append(non_sentinel_floor)
+                non_sentinel_floors.append(non_sentinel_floor)
+        expect(observed_orders == EXPECTED_ORDERS[integral], f"b64ag {integral} order drifted")
+        integral_floor = min(integral_component_floors)
+        integral_non_sentinel = min(integral_non_sentinel_floors) if integral_non_sentinel_floors else None
+        expect(
+            raw_integral.get("minimum_component_digit_floor") == integral_floor,
+            f"b64ag {integral} minimum_component_digit_floor drifted",
+        )
+        expect(
+            raw_integral.get("minimum_non_sentinel_component_digit_floor") == integral_non_sentinel,
+            f"b64ag {integral} minimum_non_sentinel_component_digit_floor drifted",
+        )
+        total_coefficients += len(coefficients)
+        total_passed += len(coefficients)
+        if classification == "direct-first-block-reviewed-row":
+            direct_count += len(coefficients)
+            direct_non_sentinel_floors.extend(integral_non_sentinel_floors)
+        else:
+            reviewed_count += len(coefficients)
+            reviewed_component_floors.extend(integral_component_floors)
+    return {
+        "total_coefficients": total_coefficients,
+        "total_passed": total_passed,
+        "minimum_component_floor": min(component_floors),
+        "minimum_non_sentinel_floor": min(non_sentinel_floors),
+        "direct_count": direct_count,
+        "direct_minimum_non_sentinel_floor": min(direct_non_sentinel_floors),
+        "reviewed_count": reviewed_count,
+        "reviewed_minimum_component_floor": min(reviewed_component_floors),
+    }
+
+
+def require_b64ag_evidence_payload(
+    root: Path,
+    evidence: dict[str, Any],
+    committed_compare: dict[str, Any],
+    committed_cpp: dict[str, Any],
+) -> None:
+    expect(evidence.get("schema_version") == 1, "b64ag evidence schema_version drifted")
+    expect(
+        evidence.get("baseline_commit") == B64AG_EVIDENCE_BASELINE_COMMIT,
+        "b64ag evidence baseline commit drifted",
+    )
+    expect(evidence.get("benchmark_id") == "linear_propagator", "b64ag benchmark_id drifted")
+    expect(evidence.get("lane") == "lane1-next24", "b64ag lane drifted")
+    expect(evidence.get("runtime_lane") == "b64ag", "b64ag runtime_lane drifted")
+    expect(
+        evidence.get("step_chosen") == "formal-b64ag-full-contour-flip",
+        "b64ag step_chosen drifted",
+    )
+    require_string(evidence, "evidence_scope", "b64ag evidence")
     expect(
         evidence.get("status") == "m6_b64ag_qualifier_passed_full_eta_zero_contour_applied",
         "b64ag evidence status drifted",
     )
     expect(evidence.get("m6_flipped") is False, "b64ag evidence must not flip global M6")
-    qualifier_pass = evidence.get("qualifier_pass")
-    expect(isinstance(qualifier_pass, dict), "b64ag evidence qualifier_pass must be an object")
+    expect(require_string_list(evidence, "withheld_claims", "b64ag evidence"), "b64ag withheld claims missing")
+    require_b64ag_runtime_provenance(evidence)
+    require_b64ag_role_verdicts(evidence)
+
+    qualifier_pass = require_object(evidence, "qualifier_pass", "b64ag evidence")
     require_path(qualifier_pass.get("summary"), B64AG_READINESS, "b64ag qualifier_pass.summary")
     expect(qualifier_pass.get("status") == "ready", "b64ag qualifier pass is not ready")
     expect(qualifier_pass.get("golden_recapture_ready") is True, "b64ag golden recapture is not ready")
     expect(qualifier_pass.get("blocking_reasons") == [], "b64ag qualifier has blockers")
     expect(qualifier_pass.get("failure_codes") == [], "b64ag qualifier has failure codes")
-    expect(qualifier_pass.get("detailed_coefficient_count") == 57, "b64ag qualifier count drifted")
+    expect(qualifier_pass.get("detailed_coefficient_count") == REQUIRED_COEFFICIENT_ROWS, "b64ag qualifier count drifted")
     expect(
         qualifier_pass.get("minimum_detailed_digit_agreement") == 51,
         "b64ag qualifier digit agreement drifted",
     )
-    rollup = evidence.get("coefficient_rollup")
-    expect(isinstance(rollup, dict), "b64ag coefficient_rollup must be an object")
+
+    row_summary = require_b64ag_per_coefficient_evidence(evidence, committed_compare, committed_cpp)
+    rollup = require_object(evidence, "coefficient_rollup", "b64ag evidence")
     expect(
         rollup.get("all_coefficients_passed_50digit_floor") is True,
         "b64ag coefficient rollup is not passing",
     )
-    expect(rollup.get("direct_first_block_coefficient_count") == 12, "b64ag direct count drifted")
     expect(
-        rollup.get("direct_first_block_minimum_non_sentinel_component_digit_floor") == 51,
+        rollup.get("direct_first_block_targets")
+        == [
+            "gauge[1,1,1,-1,1,0,0,0,0]",
+            "gauge[1,1,1,0,1,0,0,0,0]",
+        ],
+        "b64ag direct first-block targets drifted",
+    )
+    expect(
+        rollup.get("direct_first_block_coefficient_count") == row_summary["direct_count"],
+        "b64ag direct count drifted",
+    )
+    expect(
+        rollup.get("direct_first_block_minimum_non_sentinel_component_digit_floor")
+        == row_summary["direct_minimum_non_sentinel_floor"],
         "b64ag direct digit floor drifted",
     )
     expect(
-        rollup.get("zero_or_reviewed_table_coefficient_count") == 45,
+        rollup.get("zero_or_reviewed_table_coefficient_count") == row_summary["reviewed_count"],
         "b64ag reviewed-table count drifted",
     )
+    expect(
+        rollup.get("zero_or_reviewed_table_minimum_component_digit_floor")
+        == row_summary["reviewed_minimum_component_floor"],
+        "b64ag reviewed-table digit floor drifted",
+    )
+
+    comparison_summary = require_object(evidence, "comparison_summary", "b64ag evidence")
+    expect(comparison_summary.get("comparison") == "cpp-vs-amflow", "b64ag comparison kind drifted")
+    expect(comparison_summary.get("passed") is True, "b64ag comparison summary is not passing")
+    expect(comparison_summary.get("failures") == [], "b64ag comparison summary has failures")
+    expect(
+        comparison_summary.get("matched_integral_count") == len(EXPECTED_PACKET_TARGETS),
+        "b64ag matched integral count drifted",
+    )
+    expect(
+        comparison_summary.get("compared_coefficient_count") == row_summary["total_coefficients"],
+        "b64ag compared coefficient count drifted",
+    )
+    expect(
+        comparison_summary.get("computed_coefficient_count") == row_summary["total_coefficients"],
+        "b64ag computed coefficient count drifted",
+    )
+    expect(
+        comparison_summary.get("passed_coefficient_count") == row_summary["total_passed"],
+        "b64ag passed coefficient count drifted",
+    )
+    expect(
+        comparison_summary.get("computed_passed_coefficient_count") == row_summary["total_passed"],
+        "b64ag computed passed coefficient count drifted",
+    )
+    expect(
+        comparison_summary.get("computed_minimum_component_digit_floor")
+        == row_summary["minimum_non_sentinel_floor"],
+        "b64ag computed component digit floor drifted",
+    )
+    expect(
+        comparison_summary.get("computed_minimum_non_sentinel_component_digit_floor")
+        == row_summary["minimum_non_sentinel_floor"],
+        "b64ag non-sentinel digit floor drifted",
+    )
+    expect(
+        comparison_summary.get("minimum_digit_agreement") == committed_compare.get("minimum_digit_agreement"),
+        "b64ag comparison minimum digit agreement drifted",
+    )
+    expect(
+        comparison_summary.get("tolerance_digits") == committed_compare.get("tolerance_digits"),
+        "b64ag comparison tolerance drifted",
+    )
+
     require_source_artifact_hashes(root, evidence)
+
+
+def require_b64ag_closure_evidence(root: Path) -> None:
+    evidence = load_json(root / B64AG_EVIDENCE)
+    committed_compare = load_json(root / B64AG_COMPARE50)
+    committed_cpp = load_json(root / B64AG_CPP_RESULT)
+    require_b64ag_evidence_payload(root, evidence, committed_compare, committed_cpp)
 
     committed_readiness = load_json(root / B64AG_READINESS)
     rerun_readiness = audit_b64ag_golden_recapture_readiness(
@@ -316,7 +755,6 @@ def require_b64ag_closure_evidence(root: Path) -> None:
     expect(committed_readiness.get("golden_recapture_ready") is True, "b64ag readiness is not ready")
     expect(committed_readiness.get("m6_closure_claimed") is False, "b64ag readiness claims M6 closure")
 
-    committed_compare = load_json(root / B64AG_COMPARE50)
     recomputed_compare = compare_cpp_vs_amflow(
         cpp_result_path=root / B64AG_CPP_RESULT,
         amflow_golden_path=root / B64AG_AMFLOW_GOLDEN,
@@ -388,11 +826,34 @@ def run_self_check() -> dict[str, bool]:
     except ClosureAuditError:
         closure_artifact_hash_tamper_rejected = True
 
+    committed_cpp = load_json(root / B64AG_CPP_RESULT)
+    witnessless_evidence = copy.deepcopy(load_json(root / B64AG_EVIDENCE))
+    witnessless_evidence["per_integral_digit_evidence"][0]["coefficients"][0].pop(
+        "witness_reference"
+    )
+    missing_witness_rejected = False
+    try:
+        require_b64ag_evidence_payload(root, witnessless_evidence, committed, committed_cpp)
+    except ClosureAuditError:
+        missing_witness_rejected = True
+
+    nullable_field_evidence = copy.deepcopy(load_json(root / B64AG_EVIDENCE))
+    nullable_field_evidence["runtime_provenance"][
+        "final_solution_samples_used_as_input"
+    ] = None
+    nullable_field_rejected = False
+    try:
+        require_b64ag_evidence_payload(root, nullable_field_evidence, committed, committed_cpp)
+    except ClosureAuditError:
+        nullable_field_rejected = True
+
     summary = {
         "current_surface_verified": True,
         "coefficient_tamper_rejected": coefficient_tamper_rejected,
         "source_hash_tamper_rejected": source_hash_tamper_rejected,
         "closure_artifact_hash_tamper_rejected": closure_artifact_hash_tamper_rejected,
+        "missing_witness_rejected": missing_witness_rejected,
+        "nullable_field_rejected": nullable_field_rejected,
     }
     expect(all(summary.values()), "M6 readiness sidecar closure self-check failed")
     return summary

@@ -21,6 +21,10 @@
       "reason": "Release signoff must keep the public symbol-surface verifier's parser, filter, and drift-reporting fixtures live."
     },
     {
+      "name": "b64ag-phase0-packet-field-drift-gate",
+      "reason": "Release signoff consumes accepted M6 readiness evidence, so b64ag phase-0 packet fields and per-coefficient witnesses must remain fail-closed."
+    },
+    {
       "name": "boundary-sidecar-provenance-audit",
       "reason": "Release signoff must verify boundary sidecar source hashes and semantic evidence links used by post-M7 parity summaries."
     },

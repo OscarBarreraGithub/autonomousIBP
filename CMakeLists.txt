@@ -162,6 +162,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b64ag-phase0-packet-field-drift-gate
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m6_readiness_sidecar_closure.py
+      --self-check
+  )
+  set_tests_properties(b64ag-phase0-packet-field-drift-gate PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b64ag-first-block-gap-diagnostic-self-check
     COMMAND
       ${Python3_EXECUTABLE}

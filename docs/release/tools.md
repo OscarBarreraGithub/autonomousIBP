@@ -98,6 +98,7 @@ release acceptance.
 | --- | --- | --- |
 | [`validate_m6_sidecar_shapes.py`](../../tools/reference-harness/scripts/validate_m6_sidecar_shapes.py) | Validate committed M6 JSON and SQLite sidecar schemas, repo-local path references, and accepted/blocked shape consistency. | `m6-sidecar-shape-validation` and `m6-sidecar-shape-validation-self-check`. |
 | [`audit_m6_sidecar_drift.py`](../../tools/reference-harness/scripts/audit_m6_sidecar_drift.py) | Summarize accepted and unaccepted M6 sidecars, report stale metadata groups, and pin known unaccepted sidecars against silent promotion. | `m6-sidecar-drift-audit`, `m6-sidecar-drift-audit-self-check`, and `m6-unaccepted-sidecar-promotion-guard`. |
+| [`verify_m6_readiness_sidecar_closure.py`](../../tools/reference-harness/scripts/verify_m6_readiness_sidecar_closure.py) | Validate the accepted M6 readiness packet against its phase-0, case-study, b64ag runtime, comparison, and release-readiness inputs, including b64ag per-coefficient witness pointers and fail-closed nullable-field checks. | `b64ag-phase0-packet-field-drift-gate` and the readiness-closure mode of `m6-sidecar-drift-audit`. |
 
 Useful inspection commands:
 
@@ -105,6 +106,7 @@ Useful inspection commands:
 python3 tools/reference-harness/scripts/validate_m6_sidecar_shapes.py --verify
 python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --summary-only
 python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --verify-unaccepted-not-promoted --summary-only
+python3 tools/reference-harness/scripts/verify_m6_readiness_sidecar_closure.py --self-check
 ```
 
 ## Post-M7 Runtime Parity And Publication Guards
@@ -127,7 +129,7 @@ change the accepted M7 readiness packet.
 | [`b61n_parity_status_summary.py`](../../tools/reference-harness/scripts/b61n_parity_status_summary.py) | Summarize post-M7 b61n parity status from committed reference-floor, precision, publication, and optional runtime-audit evidence. | `b61n-parity-status-summary` and `b61n-parity-status-summary-self-check`. |
 | [`assert_b61n_parity_status_json_fixture.py`](../../tools/reference-harness/scripts/assert_b61n_parity_status_json_fixture.py) | Fixture gate for the pinned b61n parity status JSON contract and synthetic drift checks. | `b61n-parity-status-summary-json-fixture` and `b61n-parity-status-summary-json-fixture-self-check`. |
 | [`verify_boundary_sidecar_provenance.py`](../../tools/reference-harness/scripts/verify_boundary_sidecar_provenance.py) | Verify b61n, b63n, and b64ag boundary sidecar paths, SHA pins, source provenance digests, selected endpoint witnesses, and semantic evidence gates against the committed boundary surface. | `boundary-sidecar-provenance-audit` and `boundary-sidecar-provenance-audit-self-check`. |
-| [`audit_b64ag_golden_recapture_readiness.py`](../../tools/reference-harness/scripts/audit_b64ag_golden_recapture_readiness.py) | Fail-closed audit for b64ag golden-recapture readiness, covering runtime packet scope, AMFlow state contract, target coverage, and 50-digit evidence completeness. | `b64ag-golden-recapture-readiness-self-check`. |
+| [`audit_b64ag_golden_recapture_readiness.py`](../../tools/reference-harness/scripts/audit_b64ag_golden_recapture_readiness.py) | Fail-closed audit for b64ag golden-recapture readiness, covering runtime packet scope, AMFlow state contract, target coverage, and comparison-level 50-digit evidence completeness. The accepted evidence-sidecar schema and per-coefficient witnesses are guarded by `verify_m6_readiness_sidecar_closure.py`. | `b64ag-golden-recapture-readiness-self-check`. |
 | [`diagnose_b64ag_first_block_gap.py`](../../tools/reference-harness/scripts/diagnose_b64ag_first_block_gap.py) | Classify the b64ag first-block 50-digit comparison gap by target path and retained AMFlow precision limitation. | `b64ag-first-block-gap-diagnostic-self-check`. |
 | [`verify_b63n_d246_evidence.py`](../../tools/reference-harness/scripts/verify_b63n_d246_evidence.py) | Validate the b63n D2/D4/D6 weighted-residue sidecar schema, source hashes, blocker semantics, and optional published-evidence requirements. | `b63n-d246-evidence-verifier` and `b63n-d246-evidence-verifier-self-check`. |
 | [`verify_b63n_selected4_permutation_audit.py`](../../tools/reference-harness/scripts/verify_b63n_selected4_permutation_audit.py) | Cross-check the b63n permutation-invariant audit against selected4 parity evidence without publishing D2/D4/D6 coefficients. | `b63n-selected4-permutation-audit-verifier` and `b63n-selected4-permutation-audit-verifier-self-check`. |

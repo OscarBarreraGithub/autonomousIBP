@@ -5,12 +5,6 @@
       "path": "docs/release/amflow-live-rerun-feynman_prescription.md",
       "status": "pending-first-re-verify",
       "reason": "Awaiting first post-rotation last-re-verified metadata entry."
-    },
-    {
-      "example": "linear_propagator",
-      "path": "docs/release/amflow-live-rerun-linear_propagator.md",
-      "status": "pending-first-re-verify",
-      "reason": "Awaiting first post-rotation last-re-verified metadata entry."
     }
   ]
 }

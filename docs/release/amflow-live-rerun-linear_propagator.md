@@ -131,3 +131,5 @@ retained phase0 AMFlow `sol` output byte-for-byte. This is a live
 retained-golden reproducibility claim for the upstream script output, not a
 broader claim that the C++ runtime now implements full `b64ag` gauge-link
 transport, finite-part extraction, or high-precision endpoint recapture.
+
+last-re-verified: 2026-06-12 (sol live and retained hashes matched 364766c1d56f1fe9cced5f68e9c29ad345d28a2afc6fa8737c6040f6c20ff9bb byte-for-byte with raw-cmp-exit=0; stdout diverged to f748e68ec432cc31bf0bf872e70533d814d8f82d38c7eebdd6c129970f313227 from timing-only log deltas; stderr matched)

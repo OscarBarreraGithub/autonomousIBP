@@ -5,7 +5,7 @@ readiness: release_signoff_ready=true blockers=0 prerequisites=3/3 review_sectio
 inventory: total=77 accepted=56 unaccepted=21 schema_reconciled=true
 performance: review_complete=true benchmarks=3 runs=9 max_wall_seconds=42.16 max_rss_kb=7932
 performance_benchmarks: differential_equation_solver.eps3 max=0.88s; automatic_loop.eps2 max=1.76s; automatic_vs_manual.eps0 max=42.16s
-amflow_example_coverage: total=10 full_compared_output=2 live_retained_golden=4 partial=4 not_full_runtime=8 known_gap_rows=8 zero_evidence=0
+amflow_example_coverage: total=10 full_compared_output=2 live_retained_golden=5 partial=3 not_full_runtime=8 known_gap_rows=8 zero_evidence=0
 not_full_runtime_examples: automatic_phasespace; complex_kinematics; differential_equation_solver; feynman_prescription; linear_propagator; spacetime_dimension; user_defined_amfmode; user_defined_ending
 blockers: none
 withheld_claims: This summary reads committed sidecars only; it does not create new release evidence. This summary does not rerun AMFlow numerics or widen release claims. This summary reports documented AMFlow example reproduction gaps without closing runtime lanes.

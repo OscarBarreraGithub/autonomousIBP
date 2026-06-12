@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package the canonical M7 release evidence sidecars into a tarball."""
+"""Package the canonical M7 release evidence sidecars and docs into a tarball."""
 
 from __future__ import annotations
 
@@ -15,6 +15,12 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
+from validate_amflow_live_rerun_docs import (
+    EXPECTED_LIVE_RETAINED_GOLDEN_EXAMPLES,
+    ValidationError as LiveRerunDocValidationError,
+    live_doc_path_for,
+    validate_root as validate_live_rerun_doc_root,
+)
 from validate_m7_release_sidecar_schemas import SchemaError, validate_m7_sidecar
 
 
@@ -174,6 +180,28 @@ def require_manifest_source_commit(value: str, label: str) -> str:
     return value
 
 
+def expected_live_rerun_doc_paths() -> tuple[str, ...]:
+    return tuple(
+        live_doc_path_for(example).as_posix()
+        for example in sorted(EXPECTED_LIVE_RETAINED_GOLDEN_EXAMPLES)
+    )
+
+
+def collect_live_rerun_doc_paths(root: Path) -> list[str]:
+    try:
+        _, errors = validate_live_rerun_doc_root(root)
+    except LiveRerunDocValidationError as error:
+        raise BundleError(f"live rerun doc inventory validation failed: {error}") from error
+    if errors:
+        raise BundleError(
+            "live rerun doc inventory validation failed: " + "; ".join(errors)
+        )
+    return [
+        require_repo_file(root, relative_path, f"live rerun document {relative_path}")
+        for relative_path in expected_live_rerun_doc_paths()
+    ]
+
+
 def assert_manifest_source_commit_matches_head(root: Path, manifest: dict[str, Any]) -> None:
     source_commit = require_manifest_source_commit(
         require_manifest_string(manifest, "source_commit", "bundle manifest"),
@@ -307,6 +335,12 @@ def validate_manifest_shape(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     paths = [entry["path"] for entry in normalized_files]
     if readiness_sidecar not in paths:
         raise BundleError("bundle manifest readiness_sidecar must be included in files")
+    missing_live_docs = sorted(set(expected_live_rerun_doc_paths()).difference(paths))
+    if missing_live_docs:
+        raise BundleError(
+            "bundle manifest missing live rerun document(s): "
+            + ", ".join(missing_live_docs)
+        )
     if paths != sorted(paths):
         raise BundleError("bundle manifest files must be sorted by repository path")
     return normalized_files
@@ -350,6 +384,9 @@ def collect_release_evidence_paths(root: Path, readiness_sidecar: Path) -> list[
         rel_path = require_repo_file(root, raw_path, f"M5 acceptance evidence_paths[{index}]")
         if rel_path.endswith(".json"):
             append_unique(evidence_paths, rel_path)
+
+    for rel_path in collect_live_rerun_doc_paths(root):
+        append_unique(evidence_paths, rel_path)
 
     return sorted(evidence_paths)
 
@@ -670,6 +707,13 @@ def self_check(root: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="m7-release-evidence-bundle-") as temp_dir:
         output_path = Path(temp_dir) / "m7-release-evidence.tar.gz"
         manifest = build_manifest(root, DEFAULT_READINESS_SIDECAR, DEFAULT_BUNDLE_ROOT)
+        manifest_paths = {entry["path"] for entry in manifest["files"]}
+        missing_live_docs = sorted(set(expected_live_rerun_doc_paths()).difference(manifest_paths))
+        if missing_live_docs:
+            raise BundleError(
+                "release evidence bundle omitted live rerun document(s): "
+                + ", ".join(missing_live_docs)
+            )
         write_bundle(root, output_path, manifest)
         validate_bundle(root, output_path, manifest)
         round_trip_bundle(root, output_path, manifest)
@@ -752,6 +796,20 @@ def self_check(root: Path) -> None:
             "manifest readiness sidecar inclusion check",
             "readiness_sidecar must be included in files",
             lambda: validate_bundle(root, output_path, missing_readiness_manifest),
+        )
+
+        missing_live_doc_manifest = clone_manifest(manifest)
+        live_doc_to_remove = expected_live_rerun_doc_paths()[0]
+        missing_live_doc_manifest["files"] = [
+            entry
+            for entry in missing_live_doc_manifest["files"]
+            if entry["path"] != live_doc_to_remove
+        ]
+        missing_live_doc_manifest["file_count"] = len(missing_live_doc_manifest["files"])
+        expect_bundle_error(
+            "manifest live rerun doc inclusion check",
+            "missing live rerun document",
+            lambda: validate_bundle(root, output_path, missing_live_doc_manifest),
         )
 
         non_readiness_manifest = clone_manifest(manifest)

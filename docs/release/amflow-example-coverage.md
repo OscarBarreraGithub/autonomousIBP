@@ -1,6 +1,6 @@
 # AMFlow Example Coverage Inventory
 
-Date: 2026-06-11
+Date: 2026-06-12
 
 This inventory answers the narrow question "do we reproduce every upstream
 AMFlow example notebook/script?" The honest answer is no if "reproduce" means a
@@ -34,7 +34,7 @@ files and no `.nb` notebooks:
 | `automatic_phasespace` | `examples/automatic_phasespace/run.wl` | `b63n`: M6 lane143/lane146 selected Cutkosky endpoint evidence, 19/19 coefficients in lane146; M5 retained solution-sample comparison, 11/11 coefficients. | `reproduced-partial` |
 | `automatic_vs_manual` | `examples/automatic_vs_manual/run.wl` | Core solve-series evidence: M5 lane39, 89/89 coefficients, min 36 digits; golden manifest compares `auto` and records `man` as the same target surface. | `reproduced-fully` |
 | `complex_kinematics` | `examples/complex_kinematics/run.wl` | `b61n`: M6 lane141/lane142 selected endpoint evidence, 20/20 coefficients in lane142; M5 retained solution-sample comparison, 14/14 coefficients. | `reproduced-partial` |
-| `differential_equation_solver` | `examples/differential_equation_solver/run.wl`; `examples/differential_equation_solver/diffeq.wl` | M5 lane39 compares the retained AMFlow `sol1` boundary-value surface, 3/3 coefficients; a `sol2` golden manifest exists, but the full `diffeq.wl` DESolver checks and asymptotic expansions are not reproduced end to end. | `reproduced-partial` |
+| `differential_equation_solver` | `examples/differential_equation_solver/run.wl`; `examples/differential_equation_solver/diffeq.wl` | Live Mathematica+AMFlow rerun on 2026-06-12 matched the retained full AMFlow `de-d0-pair` `redtable`/`diffeq`/`sol1`/`sol2` packet byte-for-byte and reran the upstream DESolver `diffeq.wl` continuation/asymptotic-expansion workflow with only sub-precision printed-coefficient drift against retained Kira backup files; see `docs/release/amflow-live-rerun-differential_equation_solver.md`. This is a live AMFlow retained-golden reproduction claim, not C++ DESolver-runtime coverage. | `reproduced-fully-live` |
 | `feynman_prescription` | `examples/feynman_prescription/run.wl` | `b63n` planned/pending; M5 lane39/lane45 compares retained `sol1` solution-sample output, 76/76 coefficients. No lane14x M6 coefficient evidence exists for this row, and the opposite-prescription `sol2` branch is not fully covered. | `reproduced-partial` |
 | `linear_propagator` | `examples/linear_propagator/run.wl` | `b64ag`: M6 lane145/lane147 selected gauge-link endpoint evidence, 18/18 coefficients in lane147; M5 retained finite-solution-sample comparison, 57/57 coefficients. | `reproduced-partial` |
 | `spacetime_dimension` | `examples/spacetime_dimension/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-11 matched the retained full AMFlow `de-d0-pair` `sol73D`/`sol13D` packet at the upstream script's requested 20-digit precision and verified the dimensional-recurrence residual through `O[eps]^2`; see `docs/release/amflow-live-rerun-spacetime_dimension.md`. The raw files are not byte-identical because the retained packet stores promoted 60-precision text. This is a live retained-golden reproducibility claim, not a broader C++ nondefault-`D0` runtime claim. | `reproduced-fully-live` |
@@ -44,8 +44,8 @@ files and no `.nb` notebooks:
 No upstream example is `upstream-only-no-data`: the upstream scripts are
 fetchable from AMFlow tag `1.2`, and every example has at least some retained or
 C++ comparison evidence in the current repository. The important limitation is
-that only two rows have full compared-output C++ parity. Three additional rows
-now have live Mathematica+AMFlow retained-golden rerun evidence; the other five
+that only two rows have full compared-output C++ parity. Four additional rows
+now have live Mathematica+AMFlow retained-golden rerun evidence; the other four
 rows remain partial.
 
 ## Full Parity Rows
@@ -74,9 +74,11 @@ This list intentionally follows the release-facing order in
 - `complex_kinematics` needs full `b61n` live complex eta-contour propagation
   and endpoint extraction for the full seven-master surface without consuming
   final AMFlow solution samples.
-- `differential_equation_solver` needs C++ DESolver coverage for the `diffeq.wl`
-  continuation and asymptotic-expansion workflow, not only the retained AMFlow
-  `sol1` boundary-value comparison.
+- `differential_equation_solver` now has live Mathematica+AMFlow retained-golden
+  reproduction of `run.wl` plus the upstream DESolver `diffeq.wl` continuation
+  and asymptotic-expansion workflow, but the C++ runtime still needs DESolver
+  coverage for that workflow rather than only retained-state `sol1`/`sol2`
+  solve-series comparisons.
 - `feynman_prescription` needs the same `b63n` live Cutkosky/prescription-aware
   runtime work plus coverage of both opposite-prescription branches and the
   conjugacy check.
@@ -102,7 +104,7 @@ not-full rows, the concrete missing work is:
 | --- | --- | --- |
 | `automatic_phasespace` | Yes. A qualified high-precision AMFlow packet is needed after the live Cutkosky path is implemented. | Yes. Implement the live `b63n` Cutkosky boundary/residue/endpoint path. |
 | `complex_kinematics` | Yes. A qualified full-contour AMFlow packet is needed for the final seven-master surface. | Yes. Implement full `b61n` complex eta-contour propagation and endpoint extraction. |
-| `differential_equation_solver` | Yes or promote existing retained backup data for `sol2`, `asyexp0`, `asyexp1`, and `asyexp1-fit` into comparator-ready goldens. | Yes. Implement the DESolver continuation and asymptotic-expansion workflow. |
+| `differential_equation_solver` | No for live AMFlow retained-golden reproduction: `run.wl` was rerun byte-identically for `redtable`/`diffeq`/`sol1`/`sol2`, and `diffeq.wl` was rerun with sub-precision numeric drift against retained Kira backup `asyexp0`/`asyexp1`/`asyexp1-fit` files. A repo-local comparator-ready manifest for the DESolver expansion files is still absent. | Yes. Implement the DESolver continuation and asymptotic-expansion workflow. |
 | `feynman_prescription` | Yes. Generate/promote both `sol1` and `sol2` with a qualified conjugacy/comparator packet. | Yes. Implement prescription-aware `b63n` Cutkosky runtime coverage. |
 | `linear_propagator` | Yes. Recapture/promote a high-precision gauge-link packet for the full target surface. | Yes. Implement full `b64ag` gauge-link transport and finite-part extraction. |
 | `spacetime_dimension` | No for live AMFlow retained-golden reproduction: the full `sol13D`/`sol73D` packet and recurrence check were rerun live on 2026-06-11. A repo-local comparator-ready manifest is still absent. | Yes. Implement full retained D0 semantics for both dimensions and the recurrence check. |

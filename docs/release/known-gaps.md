@@ -1,6 +1,6 @@
 # Release Known Gaps
 
-Date: 2026-06-10
+Date: 2026-06-12
 
 This release note summarizes the AMFlow example reproduction gaps that remain
 after the accepted M7 release-readiness packet. It is a release-facing summary
@@ -34,7 +34,7 @@ the upstream AMFlow scripts:
 | --- | --- |
 | `automatic_phasespace` | Needs full `b63n` live Cutkosky phase-space boundary reconstruction, weighted residue evaluation, endpoint propagation, and a qualified high-precision AMFlow packet. |
 | `complex_kinematics` | Needs full `b61n` live complex eta-contour propagation and eta=0 endpoint extraction for the full seven-master surface without consuming final AMFlow solution samples. |
-| `differential_equation_solver` | Needs C++ coverage for the `diffeq.wl` continuation and asymptotic-expansion workflow, not only the retained AMFlow `sol1` boundary-value comparison. |
+| `differential_equation_solver` | Live AMFlow retained-golden coverage now exists for `run.wl` `redtable`/`diffeq`/`sol1`/`sol2` plus the upstream DESolver `diffeq.wl` continuation/asymptotic-expansion workflow; the remaining gap is C++ DESolver-runtime support for that workflow. |
 | `feynman_prescription` | Needs prescription-aware `b63n` Cutkosky runtime coverage, both opposite-prescription branches, and the conjugacy check. |
 | `linear_propagator` | Needs full `b64ag` gauge-link transport, finite-part extraction, target reduction over the accepted surface, and a high-precision AMFlow comparison packet. |
 | `spacetime_dimension` | Live AMFlow retained-golden coverage now exists for `D0 = 7/3`, `D0 = 1/3`, and the dimensional-recurrence check; the remaining gap is full C++ runtime support for the retained nondefault-`D0` workflow. |
@@ -47,6 +47,12 @@ shape expected of a future fail-closed recapture/runtime-packet guard:
 [`b64ag-post-m7-continuation-guard.md`](../../tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md).
 It is a routing reference only, not new runtime evidence or a release-signoff
 input.
+
+For the `differential_equation_solver` row, the post-M7 live rerun note records
+the closed upstream AMFlow data-generation side of the gap:
+[`amflow-live-rerun-differential_equation_solver.md`](amflow-live-rerun-differential_equation_solver.md).
+It is live AMFlow evidence only and does not claim C++ DESolver execution or
+change the accepted M7 release-readiness inputs.
 
 For the `user_defined_ending` row, the post-M7 live rerun note records the
 closed upstream AMFlow data-generation side of the gap:

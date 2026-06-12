@@ -1,0 +1,403 @@
+{
+  "accepted_example_count": 10,
+  "accepted_runtime_feature_count": 8,
+  "entries": [
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane39_probe/runs/automatic_loop.eps8.fixed.cpp-result.json"
+      ],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/phase0/automatic_loop.eps8-golden-manifest.json"
+      ],
+      "input_hash": "sha256:119298530d6c15ea2b84c8ecea1cdbb6f3866ec3af301a8c68da9c71b2187951",
+      "output_hash": "sha256:37178c6f17e15b7c963c7bf449aa21e13ad1ac3445838eb5400058f292583a22",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane39/automatic_loop.eps8.compare.json",
+      "packet_id": "example:automatic_loop",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "4842629b9e08c99afb356d50b90566623bd0a04e",
+      "timestamp": "2026-05-05T07:21:13-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/automatic_phasespace.cpp-result.json"
+      ],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json"
+      ],
+      "input_hash": "sha256:d617c1305abea451bcd4a96875808520bba2523aaa4fdf0846f6abc964a08f26",
+      "output_hash": "sha256:aac4a0bd564f4e10d17402fb101b16bce97be718c1148cbbd942f8e7169d9e68",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane39/automatic_phasespace.compare.json",
+      "packet_id": "example:automatic_phasespace",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "4842629b9e08c99afb356d50b90566623bd0a04e",
+      "timestamp": "2026-05-05T07:21:13-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/automatic_vs_manual.cpp-result.json"
+      ],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/phase0/automatic_vs_manual.golden-manifest.json"
+      ],
+      "input_hash": "sha256:e0fb788c2d730013065c325e84962f24d98daee1c6b49e51bd356cbb5b7e3431",
+      "output_hash": "sha256:fee1e1928168d601138424797356c5cd2e477996d27bbb8046cde6cfb08be298",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane39/automatic_vs_manual.compare.json",
+      "packet_id": "example:automatic_vs_manual",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "4842629b9e08c99afb356d50b90566623bd0a04e",
+      "timestamp": "2026-05-05T07:21:13-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/complex_kinematics.cpp-result.json"
+      ],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json"
+      ],
+      "input_hash": "sha256:0fc5f8d41527eb5da97d200d6215aa4da6a3a7b35bdb9edf48551e142fd21227",
+      "output_hash": "sha256:4dfed955ec00ddac613e68227f63c6cecdcc4fb7b4e6b3ce6a0834217257eb47",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane39/complex_kinematics.compare.json",
+      "packet_id": "example:complex_kinematics",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "4842629b9e08c99afb356d50b90566623bd0a04e",
+      "timestamp": "2026-05-05T07:21:13-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/differential_equation_solver.cpp-result.json"
+      ],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json"
+      ],
+      "input_hash": "sha256:f95ad4eac4e671a52f09f4c2df103cc94c7cf3ee0c069fa75d7ac6570db63431",
+      "output_hash": "sha256:fa83802a4670405850d737f955b3f3e3b05083c1c213b03acb1886fb8983ac81",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane39/differential_equation_solver.compare.json",
+      "packet_id": "example:differential_equation_solver",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "4842629b9e08c99afb356d50b90566623bd0a04e",
+      "timestamp": "2026-05-05T07:21:13-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/feynman_prescription.cpp-result.json"
+      ],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json"
+      ],
+      "input_hash": "sha256:1f5f40284c1febe9222c097e765dc54bfb67f3f423e17119e1b5f8f783614ad1",
+      "output_hash": "sha256:fc32a65a8c6773c592c593b3de8719e1fc4b8910d8f19284be3d21283f520afe",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane39/feynman_prescription.compare.json",
+      "packet_id": "example:feynman_prescription",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "4842629b9e08c99afb356d50b90566623bd0a04e",
+      "timestamp": "2026-05-05T07:21:13-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/linear_propagator.cpp-result.json"
+      ],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json"
+      ],
+      "input_hash": "sha256:855099449f69fcce8b436172ef9a635b8edacb40efdad91959db95f98518a799",
+      "output_hash": "sha256:d0dc75985cae098958e0581be860b8839d2d0d18caf5fefe1273e1320e836c05",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane39/linear_propagator.compare.json",
+      "packet_id": "example:linear_propagator",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "4842629b9e08c99afb356d50b90566623bd0a04e",
+      "timestamp": "2026-05-05T07:21:13-04:00"
+    },
+    {
+      "external_input_references": [],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/lane50/goldens/spacetime_dimension.direct-nondefault-d.amflow-golden.txt",
+        "tools/reference-harness/specs/m5/proof-runs/lane50/spacetime_dimension.direct-flag.cpp-result.json"
+      ],
+      "input_hash": "sha256:d85ffbc35be897be4b1c45ffb284a2ec89407e912852358025ad074e124e84c9",
+      "output_hash": "sha256:5016b23aeb3a9b189f760e3c3bffd397a1d8d92e4eef8108b4917bfdabfb616e",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane50/spacetime_dimension.direct-flag.compare.json",
+      "packet_id": "example:spacetime_dimension",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "9e28e7f485fbc8a3dcbb333d4d08d8f9309afbda",
+      "timestamp": "2026-05-05T08:42:15-04:00"
+    },
+    {
+      "external_input_references": [],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/lane50/goldens/user_defined_amfmode.box1_m2_1_1_2.scoped-golden.txt",
+        "tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json"
+      ],
+      "input_hash": "sha256:d2a7613c74d237e8a99699824f64a133258b1cb8f188250398395a973908da6d",
+      "output_hash": "sha256:99e85f22f61459388294b72380f3f31c1ab978163e523a799e340a473b71ab81",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane50/user_defined_amfmode.scoped.compare.json",
+      "packet_id": "example:user_defined_amfmode",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "9e28e7f485fbc8a3dcbb333d4d08d8f9309afbda",
+      "timestamp": "2026-05-05T08:42:15-04:00"
+    },
+    {
+      "external_input_references": [],
+      "generation_script": "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      "generation_script_version": "sha256:4f456b5b9eb69501a8c03a87001f9d3d760bf64876f72117ccd555d52462a8d8",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/lane50/goldens/user_defined_ending.final_usr.box1_m2_1_1_2.scoped-golden.txt",
+        "tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_ending.final_usr.scoped.cpp-result.json"
+      ],
+      "input_hash": "sha256:829bd9b49f7385cef6815ea92ceca4536859450c4747e020b166e27b83e17272",
+      "output_hash": "sha256:14904fba0b679fb060948f20a806f514124cfc74a215844cc1114e14526ebfca",
+      "output_path": "tools/reference-harness/specs/m5/comparisons/lane50/user_defined_ending.final_usr.scoped.compare.json",
+      "packet_id": "example:user_defined_ending",
+      "packet_kind": "accepted-example-comparison",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "9e28e7f485fbc8a3dcbb333d4d08d8f9309afbda",
+      "timestamp": "2026-05-05T08:42:15-04:00"
+    },
+    {
+      "external_input_references": [],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/comparisons/lane39/automatic_loop.eps8.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane39/automatic_phasespace.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane39/automatic_vs_manual.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane39/complex_kinematics.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane39/differential_equation_solver.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane39/feynman_prescription.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane39/linear_propagator.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane50/spacetime_dimension.direct-flag.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane50/user_defined_amfmode.scoped.compare.json",
+        "tools/reference-harness/specs/m5/comparisons/lane50/user_defined_ending.final_usr.scoped.compare.json",
+        "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json"
+      ],
+      "input_hash": "sha256:0622c48d35eb457e2c6d2df9ae103f2c30a76ea5ec2e28132777cae47c60516e",
+      "output_hash": "sha256:afb8857007f6f356cf71c43cd03bf7984e8c9ceaf7b8bc5b8a670af4fffed953",
+      "output_path": "tools/reference-harness/specs/m5/m5-feature-surface-lane50.json",
+      "packet_id": "packet:m5-feature-surface",
+      "packet_kind": "m5-feature-surface",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "9e28e7f485fbc8a3dcbb333d4d08d8f9309afbda",
+      "timestamp": "2026-05-05T08:42:15-04:00"
+    },
+    {
+      "external_input_references": [],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/m5-all-phase-closure-decision-lane62.json",
+        "tools/reference-harness/specs/m5/m5-feature-surface-lane50.json"
+      ],
+      "input_hash": "sha256:d8e24481b836d30010aa8921956b61d3d971ee21f5b8dd6ae6b217409b2e476d",
+      "output_hash": "sha256:1cc2e9aa6e04381b8c33fe81891a1724dcc2ad5386b7af561ff8ec22e1c935a3",
+      "output_path": "tools/reference-harness/specs/m5/m5-qualification-lane62.json",
+      "packet_id": "packet:m5-qualification",
+      "packet_kind": "m5-qualification",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "93db574fa9514a8d306ef4d5aab1c27e4bcea8ad",
+      "timestamp": "2026-05-05T09:59:54-04:00"
+    },
+    {
+      "external_input_references": [
+        "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/comparisons/phase0/spacetime_dimension.summary.json",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tests/amflow_tests.cpp"
+      ],
+      "input_hash": "sha256:16afa9f83647754bd18b519cac44b9cb2b7adeff734792171f27e27e1886ff14",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:arbitrary_D0",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/comparisons/lane45/complex_kinematics.compare.json",
+        "tools/reference-harness/specs/m5/proof-runs/lane45/complex_kinematics.cpp-result.json",
+        "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+        "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json"
+      ],
+      "input_hash": "sha256:de0cfbfbe7c50a7593c28b107279cd1e78620de6b0984a4dc68ad3dc012f8fc3",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:complex_kinematics",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/comparisons/lane45/feynman_prescription.compare.json",
+        "tools/reference-harness/specs/m5/proof-runs/lane45/feynman_prescription.cpp-result.json",
+        "tools/reference-harness/specs/phase0/feynman_prescription.amflow-state.json",
+        "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json"
+      ],
+      "input_hash": "sha256:d6d2bcb979edb6dea7c84c06af5a0cbb8386ef25e427646c633a1d4d7e75a586",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:feynman_prescription",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/comparisons/lane45/automatic_loop.eps8.compare.json",
+        "tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json",
+        "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+        "tools/reference-harness/specs/phase0/automatic_loop.eps8-golden-manifest.json"
+      ],
+      "input_hash": "sha256:838e858afeca5d55a3c4ddfaba8e78edae08142bd0add83d7d94dfa47f4648ca",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:fixed_eps",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/comparisons/lane45/linear_propagator.compare.json",
+        "tools/reference-harness/specs/m5/proof-runs/lane45/linear_propagator.cpp-result.json",
+        "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json",
+        "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json"
+      ],
+      "input_hash": "sha256:2e52df019816dd266bbfc612d64e558031f06a7ee22962f8b89e72c1385106d1",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:linear_propagators",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tools/reference-harness/specs/m5/comparisons/lane45/automatic_phasespace.compare.json",
+        "tools/reference-harness/specs/m5/proof-runs/lane45/automatic_phasespace.cpp-result.json",
+        "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json",
+        "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json"
+      ],
+      "input_hash": "sha256:92050e69ee835fb6d905dbfeaf85fb56614f7f87140a9adb1948171fb834bda3",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:phase_space_integration",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    },
+    {
+      "external_input_references": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+        "src/runtime/physical_kinematics_guardrails.cpp",
+        "tests/amflow_tests.cpp"
+      ],
+      "input_hash": "sha256:9797a62f8098c685952f52bedbcb8993b81ce8143dd0e8c803406f95906e0763",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:singular_kinematics_guardrails",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    },
+    {
+      "external_input_references": [
+        "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_amfmode.summary.json",
+        "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_ending.summary.json",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log"
+      ],
+      "generation_script": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+      "generation_script_version": "sha256:e1a8f8d8daa75e12315f6f959a4cf91d1d60ce4bb23f975245ec90c5c2af6fa7",
+      "input_artifacts": [
+        "tests/amflow_tests.cpp"
+      ],
+      "input_hash": "sha256:16afa9f83647754bd18b519cac44b9cb2b7adeff734792171f27e27e1886ff14",
+      "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
+      "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
+      "packet_id": "runtime_feature:user_defined_hooks",
+      "packet_kind": "accepted-runtime-feature-evidence",
+      "signer": "Oscar Barrera <obarrera@holy7c04109.rc.fas.harvard.edu>",
+      "source_commit": "3aee7a1d1f1fc7dc8ba687d106ca6150826f8d06",
+      "timestamp": "2026-05-05T07:51:40-04:00"
+    }
+  ],
+  "m5_packet_path": "tools/reference-harness/specs/m5/m5-qualification-lane62.json",
+  "packet_entry_count": 20,
+  "schema_version": 1,
+  "scope": "m5-packet-provenance",
+  "withheld_claims": [
+    "This provenance manifest hashes committed M5 packet artifacts only.",
+    "This provenance manifest does not rerun AMFlow numerics or create new retained captures.",
+    "This provenance manifest does not widen M5, M6, M7, or release-readiness claims.",
+    "Historical external run paths are recorded as external_input_references and are not counted as repo-local input_hash material."
+  ]
+}

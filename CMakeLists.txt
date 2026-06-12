@@ -444,6 +444,26 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m5-packet-provenance-audit
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m5_packet_provenance.py
+      --verify
+  )
+  set_tests_properties(m5-packet-provenance-audit PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m5-packet-provenance-audit-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m5_packet_provenance.py
+      --self-check
+  )
+  set_tests_properties(m5-packet-provenance-audit-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-markdown-docs-validation
     COMMAND
       ${Python3_EXECUTABLE}

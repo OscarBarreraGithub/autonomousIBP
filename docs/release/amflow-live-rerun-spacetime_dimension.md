@@ -121,3 +121,5 @@ retained full AMFlow `sol73D`/`sol13D` output surface at the script's requested
 20-digit precision, including the dimensional-recurrence check. This is a live
 retained-golden reproducibility claim, not a broader C++ runtime claim for
 nondefault-`D0` semantics.
+
+last-re-verified: 2026-06-12 (sol73D/sol13D live hashes matched c9633bb7addf81289bb58b4dce4af537bf400f94b0a6f246bcd80e9f848056aa/4d3d2e46359e6368455d7374f256f7eea1aa51f9310341c1c8a8d02d0ecce9e2; retained comparison stayed zero at requested precision with maxAbsDifference 0``17.329084578801616 and 0``19.644000189786354; recurrence residual matched O[eps]^2; stdout diverged to 806e0565d8c3f25ae9cdc3859e66cd72629a9be29657a229e06b0557b9e892da from timing-only log deltas; stderr matched)

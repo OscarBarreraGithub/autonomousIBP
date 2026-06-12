@@ -24,6 +24,22 @@ path through `release_signoff_readiness.py`, and fails if the fresh summary does
 not report `release_signoff_ready=true` with `release_signoff_blockers=[]`.
 CTest runs the same wrapper as `m7-release-signoff-readiness-accepted-inputs`.
 
+## CTest Gate Coverage Audit
+
+Use this command when CTest coverage changes after the 66-test M7 closure
+baseline:
+
+```sh
+python3 tools/reference-harness/scripts/audit_m7_signoff_ctest_coverage.py --verify
+```
+
+The audit compares the current CTest names against
+[`m7-signoff-ctest-gate-coverage.json`](../../tools/reference-harness/specs/release/m7-signoff-ctest-gate-coverage.json)
+and fails if any post-closure CTest gate is neither listed as required for M7
+signoff nor explicitly excluded with a reason. CTest runs the same wrapper as
+`m7-signoff-ctest-coverage-audit`; its synthetic fixture coverage runs as
+`m7-signoff-ctest-coverage-audit-self-check`.
+
 ## Health Summary
 
 Use this command when you need a one-page operator summary of the committed

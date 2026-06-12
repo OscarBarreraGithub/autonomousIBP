@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "scope": "m7-signoff-ctest-gate-coverage",
+  "post_closure_baseline_commit": "5e53cb6b3d4ced3f97649ab918a29e965942c1c0",
+  "post_closure_baseline_test_count": 66,
+  "required_signoff_gates": [
+    {
+      "name": "amflow-upstream-version-pin",
+      "reason": "Release signoff must verify the pinned upstream AMFlow package version before trusting retained live-rerun evidence."
+    },
+    {
+      "name": "amflow-upstream-version-pin-self-check",
+      "reason": "Release signoff must keep the upstream-version-pin validator's negative fixtures live."
+    },
+    {
+      "name": "boundary-sidecar-provenance-audit",
+      "reason": "Release signoff must verify boundary sidecar source hashes and semantic evidence links used by post-M7 parity summaries."
+    },
+    {
+      "name": "boundary-sidecar-provenance-audit-self-check",
+      "reason": "Release signoff must keep boundary provenance drift detection covered by synthetic failures."
+    },
+    {
+      "name": "m5-golden-fingerprint-pins",
+      "reason": "Release signoff consumes the accepted M5 packet, so its golden byte fingerprints remain required release evidence."
+    },
+    {
+      "name": "m5-golden-fingerprint-pins-self-check",
+      "reason": "Release signoff must keep the M5 fingerprint validator's drift fixture live."
+    },
+    {
+      "name": "m5-m6-m7-cross-link-closure",
+      "reason": "Release signoff must verify accepted M5, accepted M6, accepted M7, and bundle references stay mutually linked."
+    },
+    {
+      "name": "m5-packet-provenance-audit",
+      "reason": "Release signoff consumes the accepted M5 packet, so source commits, input hashes, output hashes, timestamps, and signer provenance are required."
+    },
+    {
+      "name": "m5-packet-provenance-audit-self-check",
+      "reason": "Release signoff must keep the M5 packet provenance validator's negative fixtures live."
+    },
+    {
+      "name": "m7-amflow-live-rerun-doc-inventory",
+      "reason": "Release signoff must keep the AMFlow live-rerun evidence inventory synchronized with coverage and known-gap docs."
+    },
+    {
+      "name": "m7-amflow-live-rerun-doc-inventory-self-check",
+      "reason": "Release signoff must keep the live-rerun inventory validator's negative fixtures live."
+    },
+    {
+      "name": "m7-amflow-live-rerun-doc-structure",
+      "reason": "Release signoff must verify structured live-rerun evidence blocks, digest references, exit lines, and external retained-evidence markers."
+    },
+    {
+      "name": "m7-amflow-live-rerun-doc-structure-self-check",
+      "reason": "Release signoff must keep the live-rerun doc-structure validator's negative fixtures live."
+    },
+    {
+      "name": "m7-amflow-live-rerun-freshness",
+      "reason": "Release signoff must verify every live-rerun note has current re-verification metadata or an explicit pending-first-re-verify entry."
+    },
+    {
+      "name": "m7-amflow-live-rerun-freshness-self-check",
+      "reason": "Release signoff must keep the live-rerun freshness validator's negative fixtures live."
+    },
+    {
+      "name": "m7-automatic-phasespace-blocker-docs",
+      "reason": "Release signoff must keep the automatic_phasespace known gap, blocker record, missing live-rerun note, and D246 sidecar fail-closed."
+    },
+    {
+      "name": "m7-automatic-phasespace-blocker-docs-self-check",
+      "reason": "Release signoff must keep automatic_phasespace blocker-doc drift detection covered by synthetic failures."
+    },
+    {
+      "name": "m7-release-health-summary-json-schema",
+      "reason": "Release signoff must validate the machine-readable health JSON contract consumed by status, docs, and operator summaries."
+    },
+    {
+      "name": "m7-release-health-summary-json-schema-self-check",
+      "reason": "Release signoff must keep health JSON schema drift detection covered by synthetic failures."
+    },
+    {
+      "name": "m7-release-signoff-readiness-accepted-inputs",
+      "reason": "Primary M7 signoff readiness replay; it must report release_signoff_ready=true with no blockers."
+    },
+    {
+      "name": "m7-release-signoff-readiness-failure-modes",
+      "reason": "Release signoff must keep blocked readiness states and malformed readiness inputs fail-closed."
+    },
+    {
+      "name": "m7-release-signoff-readiness-performance-baseline",
+      "reason": "Release signoff must keep accepted-input readiness replay below the committed orchestration-overhead budget."
+    },
+    {
+      "name": "m7-release-tools-catalog-validation",
+      "reason": "Release signoff must verify mode-capable release tools stay cataloged with their CTest coverage names."
+    },
+    {
+      "name": "m7-release-tools-catalog-self-check",
+      "reason": "Release signoff must keep release tooling catalog drift detection covered by synthetic failures."
+    },
+    {
+      "name": "m7-signoff-ctest-coverage-audit",
+      "reason": "Release signoff must fail if a post-closure CTest addition is neither required nor explicitly excluded with a reason."
+    },
+    {
+      "name": "m7-signoff-ctest-coverage-audit-self-check",
+      "reason": "Release signoff must keep this CTest coverage manifest validator's positive and negative fixtures live."
+    },
+    {
+      "name": "parity-status-sidecar-audit",
+      "reason": "Release signoff must verify b61n and b63n parity status sidecars remain internally coherent with accepted release scope."
+    }
+  ],
+  "explicitly_excluded_post_closure_gates": []
+}

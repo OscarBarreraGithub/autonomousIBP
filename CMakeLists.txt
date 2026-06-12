@@ -417,6 +417,26 @@ if(BUILD_TESTING)
     TIMEOUT 45)
 
   add_test(
+    NAME m7-signoff-ctest-coverage-audit
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m7_signoff_ctest_coverage.py
+      --verify
+  )
+  set_tests_properties(m7-signoff-ctest-coverage-audit PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-signoff-ctest-coverage-audit-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m7_signoff_ctest_coverage.py
+      --self-check
+  )
+  set_tests_properties(m7-signoff-ctest-coverage-audit-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-sidecar-schema-validation
     COMMAND
       ${Python3_EXECUTABLE}

@@ -23,6 +23,7 @@ The AMFlow example reproduction boundary is summarized in
 | [`assert_m7_release_signoff_ready.py`](../../tools/reference-harness/scripts/assert_m7_release_signoff_ready.py) | CI wrapper for the accepted readiness input set. It fails unless `release_signoff_ready=true` and `release_signoff_blockers=[]`. | `m7-release-signoff-readiness-accepted-inputs`. |
 | [`assert_m7_release_signoff_failures.py`](../../tools/reference-harness/scripts/assert_m7_release_signoff_failures.py) | Negative fixture coverage for blocked readiness states and malformed readiness inputs. | `m7-release-signoff-readiness-failure-modes`. |
 | [`assert_m7_release_signoff_performance.py`](../../tools/reference-harness/scripts/assert_m7_release_signoff_performance.py) | Gross regression guard for readiness orchestration overhead only. It is not an AMFlow numeric benchmark. | `m7-release-signoff-readiness-performance-baseline`. |
+| [`audit_m7_signoff_ctest_coverage.py`](../../tools/reference-harness/scripts/audit_m7_signoff_ctest_coverage.py) | Audit CTest gates added after the 66-test M7 closure baseline against the release signoff gate manifest, requiring each one to be signoff-required or explicitly excluded with a reason. | `m7-signoff-ctest-coverage-audit` and `m7-signoff-ctest-coverage-audit-self-check`. |
 
 Use the wrapper for the normal accepted-input replay:
 
@@ -32,6 +33,9 @@ python3 tools/reference-harness/scripts/assert_m7_release_signoff_ready.py
 
 Use `release_signoff_readiness.py` directly only when inspecting or archiving a
 fresh JSON summary outside the retained specs tree.
+
+Use `audit_m7_signoff_ctest_coverage.py --verify` before changing CTest coverage
+so new gates cannot bypass signoff classification.
 
 ## Sidecar Producers
 

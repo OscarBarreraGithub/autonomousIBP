@@ -37,6 +37,16 @@ fresh JSON summary outside the retained specs tree.
 Use `audit_m7_signoff_ctest_coverage.py --verify` before changing CTest coverage
 so new gates cannot bypass signoff classification.
 
+## Source Licensing And Header Gate
+
+This gate records the current source-header posture and prevents new source
+files from expanding the missing-header set silently. It does not infer a
+project license or stamp headers onto existing files.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_source_license_headers.py`](../../tools/reference-harness/scripts/verify_source_license_headers.py) | Verify scoped C++, Python tool, and CMake files either carry expected license/copyright header metadata or remain in the pinned missing-header baseline, while reporting the missing root license file as a known gap. | `source-license-header-gate` and `source-license-header-gate-self-check`. |
+
 ## Sidecar Producers
 
 These helpers produce consumer-compatible release-review sidecars for

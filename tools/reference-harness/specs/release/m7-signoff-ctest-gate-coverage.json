@@ -25,6 +25,14 @@
       "reason": "Release signoff must fail if the repo-local src compile-warning surface grows beyond the pinned fallback diagnostic baseline."
     },
     {
+      "name": "source-license-header-gate",
+      "reason": "Release signoff must fail if newly tracked C++, Python tool, or CMake sources lack license or copyright header metadata outside the pinned baseline."
+    },
+    {
+      "name": "source-license-header-gate-self-check",
+      "reason": "Release signoff must keep the source license-header verifier's missing-header and SPDX-header classification fixtures live."
+    },
+    {
       "name": "b64ag-phase0-packet-field-drift-gate",
       "reason": "Release signoff consumes accepted M6 readiness evidence, so b64ag phase-0 packet fields and per-coefficient witnesses must remain fail-closed."
     },

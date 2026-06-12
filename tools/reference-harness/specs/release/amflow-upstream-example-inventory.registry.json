@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "registry_kind": "amflow_upstream_example_inventory",
+  "observed_at_utc": "2026-06-12T22:07:58Z",
+  "repo_base_commit": "5ed48c6d8698ba047aade129ac367f5465da8bdf",
+  "decision": {
+    "coverage_complete_for_stock_upstream_examples": true,
+    "missed_upstream_example_dirs": [],
+    "covered_stock_example_dir_count": 10,
+    "stock_entry_file_count": 11,
+    "stock_notebook_count": 0,
+    "scope": "stock AMFlow upstream example directories present in the audited Git checkout refs",
+    "non_claim": "Local untracked case-study additions under copied AMFlow workspaces are not upstream distribution examples."
+  },
+  "cluster_probes": {
+    "mathematica_module": {
+      "module": "mathematica/13.3.0-fasrc01",
+      "wolfram_version": "13.3.0 for Linux x86 (64-bit) (June 3, 2023)",
+      "find_file_results": {
+        "AMFlow`": "$Failed",
+        "AMFlow.m": "$Failed"
+      }
+    },
+    "module_queries": {
+      "module_avail_matches": [
+        "mathematica/",
+        "mathematica/12.1.1-fasrc01",
+        "mathematica/13.3.0-fasrc01"
+      ],
+      "module_spider_amflow": "Unable to find: \"amflow\"."
+    },
+    "n_sw_precise_name_search": {
+      "command": "timeout 120 find /n/sw ( -iname 'amflow' -o -iname 'amflow.*' -o -iname 'AMFlow' -o -iname 'AMFlow.*' ) -print",
+      "exit_code": 124,
+      "matches_observed_before_timeout": [],
+      "note": "The broad /n/sw traversal timed out after 120 seconds and emitted no AMFlow matches before timeout; this is a bounded negative probe, not a proof over every unreadable /n/sw path."
+    },
+    "n_sw_core_comp_name_search": {
+      "command": "timeout 60 find /n/sw/helmod-rocky8/apps/Core /n/sw/helmod/apps/centos7/Core /n/sw/helmod/apps/centos7/Comp -iname '*amflow*' -print 2>/dev/null",
+      "exit_code": 124,
+      "matches_observed_before_timeout": [],
+      "note": "The narrower Core/Comp module-tree scan timed out after 60 seconds and emitted no AMFlow matches before timeout."
+    },
+    "mathematica_install_tree_name_search": {
+      "command": "find /n/sw/helmod/apps/centos7/Core/mathematica /n/sw/helmod-rocky8/apps/Core/mathematica -iname '*amflow*' -print 2>/dev/null",
+      "exit_code": 0,
+      "matches": []
+    }
+  },
+  "canonical_cluster_checkout": {
+    "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/inputs/upstream/amflow",
+    "remote": "https://gitlab.com/multiloop-pku/amflow.git",
+    "checked_out_ref": "1.1",
+    "status": "clean detached HEAD",
+    "annotated_tag_object": "a29fbdfe330ab172fe5ccdafcac2d6ec9211800e",
+    "resolved_commit": "775162498ab18493c45254b861669b4151b841ee",
+    "commit_date": "2022-06-05T00:32:30+01:00",
+    "commit_subject": "version 1.1",
+    "package_file": "AMFlow.m",
+    "package_sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
+    "examples_tree_git_object": "6962ff94f0beb87c1559a8cb33fb2a4e0e144c52",
+    "entry_path_set_sha256": "79fa25851a1e29904b089454224d9f1958b55fb023748f3c6f53bf323c201638",
+    "entry_file_manifest_sha256": "401af2c99aaca62cb7005f51ffee0a703e4e6651286560ca93ef1be557726965"
+  },
+  "same_path_cross_check_refs": [
+    {
+      "ref": "1.1",
+      "annotated_tag_object": "a29fbdfe330ab172fe5ccdafcac2d6ec9211800e",
+      "resolved_commit": "775162498ab18493c45254b861669b4151b841ee",
+      "package_sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
+      "entry_path_set_sha256": "79fa25851a1e29904b089454224d9f1958b55fb023748f3c6f53bf323c201638",
+      "entry_file_manifest_sha256": "401af2c99aaca62cb7005f51ffee0a703e4e6651286560ca93ef1be557726965"
+    },
+    {
+      "ref": "1.2",
+      "annotated_tag_object": "dd840531b0e872664a1b37425b985a2c69aa2e73",
+      "resolved_commit": "efda1dbdf2b80e597d4caa027839557e19a1c689",
+      "package_sha256": "6f16b5b48e3ea602831c9babdd9048f1cf1874623cfa428f2b53f14c72d8aff7",
+      "entry_path_set_sha256": "79fa25851a1e29904b089454224d9f1958b55fb023748f3c6f53bf323c201638",
+      "entry_file_manifest_sha256": "b961a13ad3d9c3b82923e0ac2ee1d7787e57c4aac90c903d9f8d1edcfdf6ed15"
+    }
+  ],
+  "stock_example_dirs": [
+    "automatic_loop",
+    "automatic_phasespace",
+    "automatic_vs_manual",
+    "complex_kinematics",
+    "differential_equation_solver",
+    "feynman_prescription",
+    "linear_propagator",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "installed_ref_entry_files": [
+    {
+      "path": "automatic_loop/run.wl",
+      "sha256": "9b87cc5511b280a6569d13a4fe22f6011bae97e1dc620c6d89dcf7c6020538a7"
+    },
+    {
+      "path": "automatic_phasespace/run.wl",
+      "sha256": "f9f021e584334cc21fb682526eaf9f55de95b6f2a58b2971ae46a445fd46e2bf"
+    },
+    {
+      "path": "automatic_vs_manual/run.wl",
+      "sha256": "909a383ad4fff796439ec5f6a1dc2a6a7f59f178f2db3c845115f504ba5e7920"
+    },
+    {
+      "path": "complex_kinematics/run.wl",
+      "sha256": "716c8e3934492232bf7eee1bf1070d5d207644266472a8dc541689e66b89a77a"
+    },
+    {
+      "path": "differential_equation_solver/diffeq.wl",
+      "sha256": "357bd3e3fab339fd4827636f939e15f5b7c81def32567344d9ecb8fd43a127a3"
+    },
+    {
+      "path": "differential_equation_solver/run.wl",
+      "sha256": "a2a5743353bddbf7bfb59613e901598f473088a11336af57ca8f32217aa82179"
+    },
+    {
+      "path": "feynman_prescription/run.wl",
+      "sha256": "1e3dd288e524c6f1d1d8fccc6ffc0b15a236a12177f669c6a04753c7a8770dc5"
+    },
+    {
+      "path": "linear_propagator/run.wl",
+      "sha256": "c8078fbcd4459031050e49d57fb2d83ed6565816bf5028e7ec5e90b47bfd6560"
+    },
+    {
+      "path": "spacetime_dimension/run.wl",
+      "sha256": "43368cd4eac6f234c8e14b8be578e98e37ba7bacfe3bc5baace539d7abeca385"
+    },
+    {
+      "path": "user_defined_amfmode/run.wl",
+      "sha256": "829b8ad3305a5eeacf6fa7045b17a81a3a55e34a092e572b45f9bd7e1b6f36e0"
+    },
+    {
+      "path": "user_defined_ending/run.wl",
+      "sha256": "37863919fdc3f607786a48609861693e5bc7b7341445497a4c70bf2c53e0c32b"
+    }
+  ],
+  "local_augmented_example_dirs_excluded": [
+    {
+      "example_dir": "box_integrals_fermion_bubbles_topology_h",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "diphoton_heavy_quark_form_factors",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "five_point_one_mass_complex_proxy",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "gg_to_gammagamma_light_quark_pi",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "h_to_bb_nnlo_seed",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2024-h-to-bb-nnlo/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "h_to_bb_np1_euclidean",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-h-to-bb/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "higgs_gluon_form_factor_three_scales_seed",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "jpsi_etac_bfactories_seed",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "moller_ew_double_box_seed",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "single_top_planar_nonplanar_pl1_euclidean",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "ttbar_w_automatic_loop_proxy",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "tth_light_quark_t0_euclidean",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane117-tth-light-quark-loop-mi/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "ttj_planar_topology_tt_family",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    },
+    {
+      "example_dir": "wpair_planar_t1_euclidean",
+      "sample_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane106-wpair-planar-mi/amflow",
+      "reason": "untracked local case-study addition on an AMFlow 1.1 checkout"
+    }
+  ]
+}

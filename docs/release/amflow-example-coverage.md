@@ -22,11 +22,24 @@ The cluster Mathematica smoke test passed with:
 CHANGELOG, option notes, `kira-interface.m`, and the CPC archive URL, but it
 does not contain the upstream `examples/` directory.
 
-The public upstream AMFlow `1.2` tag at
-`https://gitlab.com/multiloop-pku/amflow` and the retained local AMFlow trees
-under `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/.../amflow`
-ship ten example directories. They contain eleven Mathematica script entry
-files and no `.nb` notebooks:
+The 2026-06-12 upstream-completeness audit found no AMFlow package exposed by
+the Mathematica `13.3.0-fasrc01` `$Path`: `FindFile["AMFlow`"]` and
+`FindFile["AMFlow.m"]` both returned `$Failed`. The module system likewise has
+no `amflow` module, and a direct `*amflow*` name search under the Mathematica
+install-tree roots emitted no matches. Broader `/n/sw` name scans were bounded
+negative probes: they timed out with no AMFlow matches emitted, so they are not
+claimed as exhaustive over every unreadable `/n/sw` path. The audited cluster
+source is the retained clean upstream Git checkout at
+`/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/inputs/upstream/amflow`,
+pinned at AMFlow tag `1.1` commit
+`775162498ab18493c45254b861669b4151b841ee` with `AMFlow.m` SHA-256
+`6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add`.
+The same checkout's tag `1.2` / `origin/master` has different file contents but
+the identical `.wl`/`.nb` entry-path set. The deterministic registry is
+[`amflow-upstream-example-inventory.registry.json`](../../tools/reference-harness/specs/release/amflow-upstream-example-inventory.registry.json).
+
+That audited stock upstream set ships ten example directories. They contain
+eleven Mathematica script entry files and no `.nb` notebooks:
 
 | Upstream example | Mathematica entry file(s) | C++ lane / evidence in this repo | Status |
 | --- | --- | --- | --- |
@@ -42,11 +55,20 @@ files and no `.nb` notebooks:
 | `user_defined_ending` | `examples/user_defined_ending/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-10 completed the upstream script, wrote both `final_Tradition` and `final_usr`, and matched the committed M5 lane50 scoped `final_usr` golden exactly for `j[box1,-2,1,1,2]`; see `docs/release/amflow-live-rerun-user_defined_ending.md`. This is a live retained-golden reproducibility claim, not broader C++ ending-scheme runtime coverage. | `reproduced-fully-live` |
 
 No upstream example is `upstream-only-no-data`: the upstream scripts are
-fetchable from AMFlow tag `1.2`, and every example has at least some retained or
-C++ comparison evidence in the current repository. The important limitation is
-that only two rows have full compared-output C++ parity. Nine rows now have live
-Mathematica+AMFlow retained-golden or retained-capture rerun evidence; the
-remaining row remains partial.
+fetchable from the audited AMFlow tags `1.1` and `1.2`, and every example has
+at least some retained or C++ comparison evidence in the current repository.
+The important limitation is that only two rows have full compared-output C++
+parity. Nine rows now have live Mathematica+AMFlow retained-golden or
+retained-capture rerun evidence; the remaining row remains partial.
+
+The broader
+`/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/.../amflow` area also
+contains copied AMFlow workspaces with untracked local case-study example
+directories such as `ttj_planar_topology_tt_family`,
+`wpair_planar_t1_euclidean`, and `moller_ew_double_box_seed`. Those directories
+are not present in either audited upstream tag `1.1` or `1.2`, so they are
+excluded from this upstream example completeness claim rather than counted as
+missed upstream AMFlow examples.
 
 ## Full Parity Rows
 

@@ -142,6 +142,17 @@ if(BUILD_TESTING)
     TIMEOUT 180)
 
   add_test(
+    NAME amflow-upstream-example-inventory
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_amflow_upstream_example_inventory.py
+      --verify
+  )
+  set_tests_properties(amflow-upstream-example-inventory PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
     NAME amflow-public-symbol-surface-self-check
     COMMAND
       ${Python3_EXECUTABLE}
@@ -149,6 +160,16 @@ if(BUILD_TESTING)
       --self-check
   )
   set_tests_properties(amflow-public-symbol-surface-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME amflow-upstream-example-inventory-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_amflow_upstream_example_inventory.py
+      --self-check
+  )
+  set_tests_properties(amflow-upstream-example-inventory-self-check PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(

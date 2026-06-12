@@ -25,6 +25,14 @@
       "reason": "Release signoff consumes accepted M6 readiness evidence, so b64ag phase-0 packet fields and per-coefficient witnesses must remain fail-closed."
     },
     {
+      "name": "amflow-upstream-example-inventory",
+      "reason": "Release signoff must verify the stock upstream AMFlow example inventory and hashes before trusting all-example coverage claims."
+    },
+    {
+      "name": "amflow-upstream-example-inventory-self-check",
+      "reason": "Release signoff must keep the upstream example-inventory validator's drift fixtures live."
+    },
+    {
       "name": "boundary-sidecar-provenance-audit",
       "reason": "Release signoff must verify boundary sidecar source hashes and semantic evidence links used by post-M7 parity summaries."
     },

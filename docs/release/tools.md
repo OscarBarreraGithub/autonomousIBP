@@ -1,6 +1,6 @@
 # Release Tooling Catalog
 
-Date: 2026-06-10
+Date: 2026-06-12
 
 This catalog lists the repository-local tools used to replay, inspect, package,
 and validate the retained M7 release evidence. It is documentation only: it does
@@ -140,15 +140,25 @@ or change the accepted M7 readiness scope.
 | Tool | Primary use | CI coverage |
 | --- | --- | --- |
 | [`validate_release_markdown.py`](../../tools/reference-harness/scripts/validate_release_markdown.py) | Validate release markdown links and fenced code blocks under `docs/release/` plus [`docs/release-signoff-checklist.md`](../release-signoff-checklist.md). | `m7-release-markdown-docs-validation` and `m7-release-markdown-docs-self-check`. |
+| [`validate_amflow_live_rerun_docs.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py) | Validate that the AMFlow coverage table, the seven live retained-golden rerun notes, and the blocked `automatic_phasespace` row remain synchronized. | `m7-amflow-live-rerun-doc-inventory` and `m7-amflow-live-rerun-doc-inventory-self-check`. |
 
 Run it directly after editing release docs:
 
 ```sh
 python3 tools/reference-harness/scripts/validate_release_markdown.py
 python3 tools/reference-harness/scripts/validate_release_markdown.py --self-check
+python3 tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py --verify
+python3 tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py --self-check
 ```
 
 The validator checks local links, markdown fragments, and parseability of `sh`,
 `bash`, and `json` fenced blocks. Its self-check exercises valid release-doc
 fixtures plus missing-anchor, repository-escape, bad-shell-fence, and
 unsupported-language failures. It does not decide release readiness.
+
+The live-rerun inventory validator is narrower: it pins the current seven live
+retained-golden AMFlow rerun docs, requires each pinned row in
+[`amflow-example-coverage.md`](amflow-example-coverage.md) to cite its matching
+rerun note, and rejects an `automatic_phasespace` live-rerun promotion while the
+D246 blocker remains open. It does not run Mathematica, create AMFlow outputs,
+or widen the accepted runtime scope.

@@ -22,6 +22,10 @@ from validate_m6_sidecar_shapes import (
     validate_sqlite_sidecar,
     write_json,
 )
+from verify_m6_readiness_sidecar_closure import (
+    run_self_check as run_readiness_closure_self_check,
+    verify as verify_readiness_closure,
+)
 
 
 WITHHELD_CLAIMS: tuple[str, ...] = (
@@ -560,6 +564,7 @@ def run_self_check() -> dict[str, Any]:
             "no_drift_rejected": no_drift_rejected,
             "promotion_guard_passed": promotion_guard_passed,
             "promoted_sidecar_rejected": promoted_sidecar_rejected,
+            "readiness_closure_self_check": run_readiness_closure_self_check(),
         }
 
 
@@ -597,6 +602,16 @@ def parse_args() -> argparse.Namespace:
         help="Fail if any pinned unaccepted M6 sidecar validates as accepted.",
     )
     parser.add_argument(
+        "--verify-readiness-closure",
+        action="store_true",
+        help="Verify the accepted M6 readiness sidecar against closure evidence.",
+    )
+    parser.add_argument(
+        "--readiness-closure-self-check",
+        action="store_true",
+        help="Run M6 readiness closure tamper-detection checks.",
+    )
+    parser.add_argument(
         "--self-check",
         action="store_true",
         help="Run synthetic drift-detection regression checks.",
@@ -610,10 +625,15 @@ def main() -> int:
         if args.self_check:
             print(json.dumps(run_self_check(), indent=2, sort_keys=True))
             return 0
+        if args.readiness_closure_self_check:
+            print(json.dumps(run_readiness_closure_self_check(), indent=2, sort_keys=True))
+            return 0
 
         report = build_report(repo_root(), Path(args.m6_root))
         if args.verify:
             verify_report(report)
+        if args.verify_readiness_closure:
+            verify_readiness_closure(repo_root())
         if args.verify_no_drift:
             verify_no_drift(report)
         if args.verify_unaccepted_not_promoted:

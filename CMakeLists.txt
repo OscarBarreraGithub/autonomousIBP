@@ -320,6 +320,7 @@ if(BUILD_TESTING)
       ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m6_sidecar_drift.py
       --verify
+      --verify-readiness-closure
       --summary-only
   )
   set_tests_properties(m6-sidecar-drift-audit PROPERTIES

@@ -101,6 +101,44 @@ python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --sum
 python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --verify-unaccepted-not-promoted --summary-only
 ```
 
+## Post-M7 Runtime Parity And Publication Guards
+
+These checks summarize and guard the retained post-M7 b61n, b63n, and b64ag
+runtime evidence surfaces. They are read-only release support tools: they do not
+rerun AMFlow, publish withheld coefficients, close blocked runtime lanes, or
+change the accepted M7 readiness packet.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`audit_b61n_publication_qualifier.py`](../../tools/reference-harness/scripts/audit_b61n_publication_qualifier.py) | Audit the b61n publication qualifier sidecar for deterministic replay, required diagnostic fields, precision evidence binding, inventory consistency, and fail-closed field drift. | `b61n-publication-qualifier-determinism`, `b61n-publication-precision-evidence-binding`, `b61n-publication-precision-inventory-consistency`, `b61n-publication-diagnostic-fields`, `b61n-publication-diagnostic-field-removal-self-check`, `b61n-publication-diagnostic-field-addition-self-check`, and `b61n-publication-qualifier-failure-modes-self-check`. |
+| [`diagnose_b61n_row56_specific_targets.py`](../../tools/reference-harness/scripts/diagnose_b61n_row56_specific_targets.py) | Read-only diagnostic for the four b61n row 5/6 comparator targets, classifying sample-space, publication-gate, transport-precision, and AMFlow reference-precision limits. | `b61n-row56-specific-target-diagnostic-self-check`. |
+| [`verify_b61n_publication_audit_field.py`](../../tools/reference-harness/scripts/verify_b61n_publication_audit_field.py) | Query and assert one addressed field from the generated b61n publication audit JSON, with path-parser rejection checks. | `b61n-publication-audit-field-query-self-check`. |
+| [`verify_b61n_reference_floor_parity.py`](../../tools/reference-harness/scripts/verify_b61n_reference_floor_parity.py) | Verify the retained b61n row 5/6 C++ comparison against the documented AMFlow reference floor and target-count expectations. | `b61n-reference-floor-parity-gate` and `b61n-reference-floor-parity-gate-self-check`. |
+| [`verify_b61n_precision_uplift_monotonicity.py`](../../tools/reference-harness/scripts/verify_b61n_precision_uplift_monotonicity.py) | Verify the b61n row 5/6 precision-uplift sidecar is monotonic and remains bound to its committed C++ result and diagnostic sources. | `b61n-precision-uplift-monotonicity` and `b61n-precision-uplift-monotonicity-self-check`. |
+| [`verify_b61n_exact_rational_extension_stability.py`](../../tools/reference-harness/scripts/verify_b61n_exact_rational_extension_stability.py) | Verify the b61n exact-rational 160-digit extension fixture against the committed source precision evidence. | `b61n-exact-rational-extension-stability` and `b61n-exact-rational-extension-stability-self-check`. |
+| [`verify_b61n_publication_audit_trail.py`](../../tools/reference-harness/scripts/verify_b61n_publication_audit_trail.py) | Query the C++ b61n publication audit emitter and validate pinned audit labels, keys, fingerprints, and fail-closed mutations. | `b61n-publication-audit-trail-query-self-check`. |
+| [`regenerate_b61n_publication_audit_fingerprints.py`](../../tools/reference-harness/scripts/regenerate_b61n_publication_audit_fingerprints.py) | Emit fresh b61n publication audit fingerprints from `singular-runtime-lane-tests` and fail unless they match the pinned values. | `b61n-publication-audit-fingerprint-regenerator-self-check`. |
+| [`b61n_parity_status_summary.py`](../../tools/reference-harness/scripts/b61n_parity_status_summary.py) | Summarize post-M7 b61n parity status from committed reference-floor, precision, publication, and optional runtime-audit evidence. | `b61n-parity-status-summary` and `b61n-parity-status-summary-self-check`. |
+| [`assert_b61n_parity_status_json_fixture.py`](../../tools/reference-harness/scripts/assert_b61n_parity_status_json_fixture.py) | Fixture gate for the pinned b61n parity status JSON contract and synthetic drift checks. | `b61n-parity-status-summary-json-fixture` and `b61n-parity-status-summary-json-fixture-self-check`. |
+| [`audit_b64ag_golden_recapture_readiness.py`](../../tools/reference-harness/scripts/audit_b64ag_golden_recapture_readiness.py) | Fail-closed audit for b64ag golden-recapture readiness, covering runtime packet scope, AMFlow state contract, target coverage, and 50-digit evidence completeness. | `b64ag-golden-recapture-readiness-self-check`. |
+| [`diagnose_b64ag_first_block_gap.py`](../../tools/reference-harness/scripts/diagnose_b64ag_first_block_gap.py) | Classify the b64ag first-block 50-digit comparison gap by target path and retained AMFlow precision limitation. | `b64ag-first-block-gap-diagnostic-self-check`. |
+| [`verify_b63n_d246_evidence.py`](../../tools/reference-harness/scripts/verify_b63n_d246_evidence.py) | Validate the b63n D2/D4/D6 weighted-residue sidecar schema, source hashes, blocker semantics, and optional published-evidence requirements. | `b63n-d246-evidence-verifier` and `b63n-d246-evidence-verifier-self-check`. |
+| [`verify_b63n_selected4_permutation_audit.py`](../../tools/reference-harness/scripts/verify_b63n_selected4_permutation_audit.py) | Cross-check the b63n permutation-invariant audit against selected4 parity evidence without publishing D2/D4/D6 coefficients. | `b63n-selected4-permutation-audit-verifier` and `b63n-selected4-permutation-audit-verifier-self-check`. |
+| [`verify_b63n_scoped_gate_audit_trail.py`](../../tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py) | Query the b63n scoped gate audit emitter and validate pinned blocked/published weighted-residue labels plus fail-closed mutations. | `b63n-scoped-gate-audit-trail-query-self-check`. |
+| [`regenerate_b63n_weighted_residue_fingerprints.py`](../../tools/reference-harness/scripts/regenerate_b63n_weighted_residue_fingerprints.py) | Emit fresh b63n weighted-residue audit fingerprints from `cutkosky-weighted-residue-tests` and fail unless they match the pinned values. | `b63n-weighted-residue-fingerprint-regenerator-self-check`. |
+| [`b63n_parity_status_summary.py`](../../tools/reference-harness/scripts/b63n_parity_status_summary.py) | Summarize post-M7 b63n parity status from committed first, selected4, D246, and optional runtime-audit evidence. | `b63n-parity-status-summary` and `b63n-parity-status-summary-self-check`. |
+| [`assert_b63n_parity_status_json_fixture.py`](../../tools/reference-harness/scripts/assert_b63n_parity_status_json_fixture.py) | Fixture gate for the pinned b63n parity status JSON contract and synthetic drift checks. | `b63n-parity-status-summary-json-fixture` and `b63n-parity-status-summary-json-fixture-self-check`. |
+
+Useful inspection commands:
+
+```sh
+python3 tools/reference-harness/scripts/b61n_parity_status_summary.py --format json
+python3 tools/reference-harness/scripts/b63n_parity_status_summary.py --format json
+python3 tools/reference-harness/scripts/diagnose_b61n_row56_specific_targets.py --self-check
+python3 tools/reference-harness/scripts/diagnose_b64ag_first_block_gap.py --self-check
+python3 tools/reference-harness/scripts/verify_b63n_d246_evidence.py
+```
+
 ## Evidence Bundle And Health
 
 | Tool | Primary use | CI coverage |
@@ -111,7 +149,7 @@ python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --ver
 | [`release_health_summary.py`](../../tools/reference-harness/scripts/release_health_summary.py) | Print a compact readiness, inventory, performance-review, and documented AMFlow example coverage-gap summary from committed files. | `m7-release-health-summary`, `m7-release-health-source-sidecar-self-check`, and `m7-release-health-summary-json`. |
 | [`assert_m7_release_health_json_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py) | Fixture gate for the machine-readable health JSON contract, including a synthetic drift self-check. | `m7-release-health-summary-json-fixture` and `m7-release-health-summary-json-fixture-self-check`. |
 | [`assert_m7_release_health_text_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_text_fixture.py) | Fixture gate for the operator-facing text health contract. | `m7-release-health-summary-text-fixture`. |
-| [`release_status_badge.py`](../../tools/reference-harness/scripts/release_status_badge.py) | Render a Shields-compatible JSON status badge from the release health summary. | `m7-release-status-badge` and badge fixture tests. |
+| [`release_status_badge.py`](../../tools/reference-harness/scripts/release_status_badge.py) | Render a Shields-compatible JSON status badge from the release health summary. | `m7-release-status-badge` and `m7-release-status-badge-self-check`. |
 | [`assert_m7_release_health_outputs_consistent.py`](../../tools/reference-harness/scripts/assert_m7_release_health_outputs_consistent.py) | Verify text, JSON, and badge health outputs remain mutually consistent, including the AMFlow example coverage counters and not-full runtime example list. | `m7-release-health-output-consistency`. |
 
 Operator commands:
@@ -146,15 +184,22 @@ lanes or change the accepted M7 readiness scope.
 | Tool | Primary use | CI coverage |
 | --- | --- | --- |
 | [`validate_release_markdown.py`](../../tools/reference-harness/scripts/validate_release_markdown.py) | Validate release markdown links and fenced code blocks under `docs/release/` plus [`docs/release-signoff-checklist.md`](../release-signoff-checklist.md). | `m7-release-markdown-docs-validation` and `m7-release-markdown-docs-self-check`. |
+| [`validate_release_tools_catalog.py`](../../tools/reference-harness/scripts/validate_release_tools_catalog.py) | Validate this tooling catalog against CTest-wired mode-capable release scripts and reject stale tool links or missing CTest coverage names. | `m7-release-tools-catalog-validation` and `m7-release-tools-catalog-self-check`. |
 | [`validate_amflow_live_rerun_docs.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py) | Validate that the AMFlow coverage table, the seven live retained-golden rerun notes, and the blocked `automatic_phasespace` row remain synchronized. | `m7-amflow-live-rerun-doc-inventory` and `m7-amflow-live-rerun-doc-inventory-self-check`. |
+| [`validate_amflow_live_rerun_doc_structure.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_doc_structure.py) | Validate structured evidence blocks, digest references, exit lines, and external retained-evidence markers in the seven AMFlow live-rerun notes. | `m7-amflow-live-rerun-doc-structure` and `m7-amflow-live-rerun-doc-structure-self-check`. |
+| [`validate_automatic_phasespace_blocker_docs.py`](../../tools/reference-harness/scripts/validate_automatic_phasespace_blocker_docs.py) | Validate that the `automatic_phasespace` known-gap row, blocker record, absent live-rerun note, and D246 sidecar stay fail-closed and synchronized. | `m7-automatic-phasespace-blocker-docs` and `m7-automatic-phasespace-blocker-docs-self-check`. |
 
 Run it directly after editing release docs:
 
 ```sh
 python3 tools/reference-harness/scripts/validate_release_markdown.py
 python3 tools/reference-harness/scripts/validate_release_markdown.py --self-check
+python3 tools/reference-harness/scripts/validate_release_tools_catalog.py --verify
+python3 tools/reference-harness/scripts/validate_release_tools_catalog.py --self-check
 python3 tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py --verify
 python3 tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py --self-check
+python3 tools/reference-harness/scripts/validate_amflow_live_rerun_doc_structure.py --verify
+python3 tools/reference-harness/scripts/validate_automatic_phasespace_blocker_docs.py --verify
 ```
 
 The validator checks local links, markdown fragments, and parseability of `sh`,
@@ -168,3 +213,8 @@ retained-golden AMFlow rerun docs, requires each pinned row in
 rerun note, and rejects an `automatic_phasespace` live-rerun promotion while the
 D246 blocker remains open. It does not run Mathematica, create AMFlow outputs,
 or widen the accepted runtime scope.
+
+The tools catalog validator reads CTest declarations and this file only. It
+guards catalog completeness and link freshness for release-script tests with
+`--self-check` or `--verify` modes, but it does not run the underlying evidence
+tools or change their release claims.

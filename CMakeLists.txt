@@ -443,6 +443,26 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-tools-catalog-validation
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_release_tools_catalog.py
+      --verify
+  )
+  set_tests_properties(m7-release-tools-catalog-validation PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-release-tools-catalog-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_release_tools_catalog.py
+      --self-check
+  )
+  set_tests_properties(m7-release-tools-catalog-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-automatic-phasespace-blocker-docs
     COMMAND
       ${Python3_EXECUTABLE}

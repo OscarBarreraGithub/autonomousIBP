@@ -91,3 +91,5 @@ The raw live scoped file and raw retained golden have different sha256 values be
 `reproduced-matches-golden`
 
 This confirms the Mathematica 13.3 + AMFlow 1.1 + Kira 3.1 + Fermat stack can freshly rerun the upstream `user_defined_amfmode` example and reproduce the committed retained AMFlow scoped golden exactly. This status is limited to the retained scoped golden surface above and does not claim new C++ eta=0 endpoint-runtime coverage.
+
+last-re-verified: 2026-06-12 (scoped canonical InputForm matched 64fa1cf501aead66f6c9abf5f47146248d4e64a26eec4758d00a87c19bf99035; full sol matched bbb03a1ff78f37aabe1dcb3d505d8958c90311814d983baa46ab02665e5967a8; stdout diverged to ac3dd45b707ccfd97d1586c712c92cad6ce3e59181ee9e36de10b24d33f9fc9a from timing-only log deltas; stderr matched)

@@ -186,6 +186,45 @@ seven pinned live-rerun notes so the signoff archive cannot silently drop that
 release surface, but it must not be treated as new runtime, parity, or
 qualification evidence.
 
+### Deterministic Artifact Check
+
+Lane6 v8 checked build-artifact reproducibility at
+`263f2f67eab1241cb58202a150d571e126892c10` on 2026-06-12 from a detached
+worktree with two independent Release/Ninja build directories, optional
+external dependencies disabled, and GCC 8.5.0:
+
+```sh
+cmake -S . -B /tmp/autoibp-lane6-v8-build-a -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DAMFLOW_WITH_GINAC=OFF -DAMFLOW_WITH_MPFR=OFF -DAMFLOW_WITH_YAML_CPP=OFF
+cmake --build /tmp/autoibp-lane6-v8-build-a --parallel 4
+ctest --test-dir /tmp/autoibp-lane6-v8-build-a --output-on-failure --parallel 4
+
+cmake -S . -B /tmp/autoibp-lane6-v8-build-b -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DAMFLOW_WITH_GINAC=OFF -DAMFLOW_WITH_MPFR=OFF -DAMFLOW_WITH_YAML_CPP=OFF
+cmake --build /tmp/autoibp-lane6-v8-build-b --parallel 4
+ctest --test-dir /tmp/autoibp-lane6-v8-build-b --output-on-failure --parallel 4
+```
+
+Both full test passes reported `91/91` passing tests. The selected stable
+artifacts matched byte-for-byte:
+
+| Artifact | Normalization | SHA-256 |
+| --- | --- | --- |
+| `m7-release-evidence.tar.gz` from `package_m7_release_evidence.py` | None; the packager already fixes gzip filename/mtime plus tar member order, uid/gid, uname/gname, mode, and mtime. | `af0079e9c9da48ddcc7c543f9fc364508109fa811d4c9e508dc0d292f9489687` |
+| `amflow-tests` | None; raw Release executable from the two build directories compared equal. | `4d1debd4224517ef015a07b4a3eccbd2c6280c3303fbbca973da64920101e42f` |
+| `amflow-tests` | `strip --strip-all` copy, as a conservative stable-binary check. | `2d02ba56eefb8cf53a84f1f5b3727f925f6a9142695538fe057e19932f6808ab` |
+
+The only observed variable field was the `bundle` path in the packager stdout
+JSON, which reflects the caller-selected output location. After normalizing that
+path, the package summaries matched with
+`evidence_corpus_sha256=c1478382a02fbe1c4b6f4a7baea9932e454ade7cb5f7ae5d6aedc794d50f3ab5`
+and `file_count=22`.
+
+This is a narrow determinism guarantee for the listed artifacts under the same
+source checkout, compiler, build type, CMake options, and source path. It is not
+a claim that CMake's generated build trees, arbitrary debug builds, alternate
+compiler/linker versions, or optional external dependency builds are hermetic.
+
 The health summary's AMFlow example coverage block is an inventory guard. It
 keeps the detailed coverage doc and release known-gaps table aligned in both
 content and not-full-row order, verifies the frozen ten-example AMFlow inventory,

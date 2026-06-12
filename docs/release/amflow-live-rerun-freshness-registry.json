@@ -1,0 +1,28 @@
+{
+  "pending_first_reverify": [
+    {
+      "example": "complex_kinematics",
+      "path": "docs/release/amflow-live-rerun-complex_kinematics.md",
+      "status": "pending-first-re-verify",
+      "reason": "Awaiting first post-rotation last-re-verified metadata entry."
+    },
+    {
+      "example": "feynman_prescription",
+      "path": "docs/release/amflow-live-rerun-feynman_prescription.md",
+      "status": "pending-first-re-verify",
+      "reason": "Awaiting first post-rotation last-re-verified metadata entry."
+    },
+    {
+      "example": "linear_propagator",
+      "path": "docs/release/amflow-live-rerun-linear_propagator.md",
+      "status": "pending-first-re-verify",
+      "reason": "Awaiting first post-rotation last-re-verified metadata entry."
+    },
+    {
+      "example": "user_defined_ending",
+      "path": "docs/release/amflow-live-rerun-user_defined_ending.md",
+      "status": "pending-first-re-verify",
+      "reason": "Awaiting first post-rotation last-re-verified metadata entry."
+    }
+  ]
+}

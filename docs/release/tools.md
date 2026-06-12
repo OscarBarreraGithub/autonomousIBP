@@ -191,6 +191,7 @@ lanes or change the accepted M7 readiness scope.
 | [`validate_release_tools_catalog.py`](../../tools/reference-harness/scripts/validate_release_tools_catalog.py) | Validate this tooling catalog against CTest-wired mode-capable release scripts and reject stale tool links or missing CTest coverage names. | `m7-release-tools-catalog-validation` and `m7-release-tools-catalog-self-check`. |
 | [`validate_amflow_live_rerun_docs.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py) | Validate that the AMFlow coverage table, the seven live retained-golden rerun notes, and the blocked `automatic_phasespace` row remain synchronized. | `m7-amflow-live-rerun-doc-inventory` and `m7-amflow-live-rerun-doc-inventory-self-check`. |
 | [`validate_amflow_live_rerun_doc_structure.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_doc_structure.py) | Validate structured evidence blocks, digest references, exit lines, and external retained-evidence markers in the seven AMFlow live-rerun notes. | `m7-amflow-live-rerun-doc-structure` and `m7-amflow-live-rerun-doc-structure-self-check`. |
+| [`validate_amflow_live_rerun_freshness.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_freshness.py) | Validate that every AMFlow live-rerun note either carries `last-re-verified` metadata or is explicitly listed as `pending-first-re-verify` in [`amflow-live-rerun-freshness-registry.json`](amflow-live-rerun-freshness-registry.json). | `m7-amflow-live-rerun-freshness` and `m7-amflow-live-rerun-freshness-self-check`. |
 | [`validate_automatic_phasespace_blocker_docs.py`](../../tools/reference-harness/scripts/validate_automatic_phasespace_blocker_docs.py) | Validate that the `automatic_phasespace` known-gap row, blocker record, absent live-rerun note, and D246 sidecar stay fail-closed and synchronized. | `m7-automatic-phasespace-blocker-docs` and `m7-automatic-phasespace-blocker-docs-self-check`. |
 
 Run it directly after editing release docs:
@@ -203,6 +204,8 @@ python3 tools/reference-harness/scripts/validate_release_tools_catalog.py --self
 python3 tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py --verify
 python3 tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py --self-check
 python3 tools/reference-harness/scripts/validate_amflow_live_rerun_doc_structure.py --verify
+python3 tools/reference-harness/scripts/validate_amflow_live_rerun_freshness.py --verify
+python3 tools/reference-harness/scripts/validate_amflow_live_rerun_freshness.py --self-check
 python3 tools/reference-harness/scripts/validate_automatic_phasespace_blocker_docs.py --verify
 ```
 
@@ -217,6 +220,14 @@ retained-golden AMFlow rerun docs, requires each pinned row in
 rerun note, and rejects an `automatic_phasespace` live-rerun promotion while the
 D246 blocker remains open. It does not run Mathematica, create AMFlow outputs,
 or widen the accepted runtime scope.
+
+The live-rerun freshness validator is narrower still: it checks only the seven
+committed live-rerun notes and
+[`amflow-live-rerun-freshness-registry.json`](amflow-live-rerun-freshness-registry.json).
+Every live-rerun note must either carry a valid `last-re-verified` line or be
+listed with `pending-first-re-verify` until lane re-verification records the
+first metadata line. It does not add metadata, run Mathematica, or change
+retained-golden claims.
 
 The tools catalog validator reads CTest declarations and this file only. It
 guards catalog completeness and link freshness for release-script tests with

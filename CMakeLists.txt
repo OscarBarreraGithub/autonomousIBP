@@ -543,6 +543,26 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-amflow-live-rerun-freshness
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_amflow_live_rerun_freshness.py
+      --verify
+  )
+  set_tests_properties(m7-amflow-live-rerun-freshness PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-amflow-live-rerun-freshness-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_amflow_live_rerun_freshness.py
+      --self-check
+  )
+  set_tests_properties(m7-amflow-live-rerun-freshness-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-sidecar-inventory-audit
     COMMAND
       ${Python3_EXECUTABLE}

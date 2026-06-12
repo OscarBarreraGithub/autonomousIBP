@@ -90,6 +90,23 @@ if(BUILD_TESTING)
     TIMEOUT 2400)
 
   add_test(
+    NAME cmake-build-testing-off-configure
+    COMMAND
+      ${CMAKE_COMMAND}
+      -S
+      ${CMAKE_CURRENT_SOURCE_DIR}
+      -B
+      ${CMAKE_CURRENT_BINARY_DIR}/cmake-build-testing-off-configure
+      -DBUILD_TESTING=OFF
+      -DAMFLOW_WITH_GINAC=OFF
+      -DAMFLOW_WITH_MPFR=OFF
+      -DAMFLOW_WITH_YAML_CPP=OFF
+  )
+  set_tests_properties(cmake-build-testing-off-configure PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
     NAME amflow-upstream-version-pin
     COMMAND
       ${Python3_EXECUTABLE}

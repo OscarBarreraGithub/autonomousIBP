@@ -21,6 +21,10 @@
       "reason": "Release signoff must keep boundary provenance drift detection covered by synthetic failures."
     },
     {
+      "name": "cmake-build-testing-off-configure",
+      "reason": "Release signoff must prove downstream source builds can configure the runtime library with BUILD_TESTING disabled and no test-only dependencies."
+    },
+    {
       "name": "m5-golden-fingerprint-pins",
       "reason": "Release signoff consumes the accepted M5 packet, so its golden byte fingerprints remain required release evidence."
     },

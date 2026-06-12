@@ -33,7 +33,7 @@ the upstream AMFlow scripts:
 | AMFlow example | Remaining gap |
 | --- | --- |
 | `automatic_phasespace` | Needs full `b63n` live Cutkosky phase-space boundary reconstruction, weighted residue evaluation, endpoint propagation, and a qualified high-precision AMFlow packet. |
-| `complex_kinematics` | Needs full `b61n` live complex eta-contour propagation and eta=0 endpoint extraction for the full seven-master surface without consuming final AMFlow solution samples. |
+| `complex_kinematics` | Live AMFlow retained-golden coverage now exists for the seven-rule complex-mass box `sol` output; the remaining gap is full `b61n` live complex eta-contour propagation, eta=0 endpoint extraction, and packet qualification without consuming final AMFlow solution samples. |
 | `differential_equation_solver` | Live AMFlow retained-golden coverage now exists for `run.wl` `redtable`/`diffeq`/`sol1`/`sol2` plus the upstream DESolver `diffeq.wl` continuation/asymptotic-expansion workflow; the remaining gap is C++ DESolver-runtime support for that workflow. |
 | `feynman_prescription` | Live AMFlow retained-golden coverage now exists for both opposite-prescription `sol1`/`sol2` branches and the saved-output conjugacy check; the remaining gap is prescription-aware `b63n` Cutkosky C++ runtime coverage and comparator output namespacing. |
 | `linear_propagator` | Needs full `b64ag` gauge-link transport, finite-part extraction, target reduction over the accepted surface, and a high-precision AMFlow comparison packet. |
@@ -53,6 +53,14 @@ the closed upstream AMFlow data-generation side of the gap:
 [`amflow-live-rerun-differential_equation_solver.md`](amflow-live-rerun-differential_equation_solver.md).
 It is live AMFlow evidence only and does not claim C++ DESolver execution or
 change the accepted M7 release-readiness inputs.
+
+For the `complex_kinematics` row, the post-M7 live rerun note records the
+closed upstream AMFlow data-generation side of the retained complex-mass box
+output:
+[`amflow-live-rerun-complex_kinematics.md`](amflow-live-rerun-complex_kinematics.md).
+It is live AMFlow evidence only and does not claim C++ full complex eta-contour
+execution, optional phase-0 packet qualification, or a change to the accepted
+M7 release-readiness inputs.
 
 For the `user_defined_ending` row, the post-M7 live rerun note records the
 closed upstream AMFlow data-generation side of the gap:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate release markdown links and fenced code blocks."""
+"""Validate release markdown links, README TOC coverage, path citations, and fenced code blocks."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from urllib.parse import unquote, urlsplit
 
 RELEASE_DOCS_ROOT = Path("docs/release")
 RELEASE_CHECKLIST = Path("docs/release-signoff-checklist.md")
+README_PATH = Path("README.md")
 REQUIRED_RELEASE_MARKDOWN = frozenset(
     (
         RELEASE_CHECKLIST,
@@ -33,6 +34,10 @@ SHELL_FENCE_LANGUAGES = frozenset(("bash", "sh"))
 INLINE_LINK_PATTERN = re.compile(r"(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)")
 REFERENCE_LINK_PATTERN = re.compile(r"^\s{0,3}\[[^\]\n]+\]:\s*(\S+)")
 HEADING_PATTERN = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+REPO_PATH_LITERAL_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_./-])"
+    r"((?:docs|tools|specs|references|include|src|tests)/[A-Za-z0-9_./+@:-]+|CMakeLists\.txt)"
+)
 
 
 @dataclass(frozen=True)
@@ -75,6 +80,13 @@ def release_markdown_paths(root: Path) -> list[Path]:
         raise MarkdownError(f"{RELEASE_CHECKLIST} is missing")
     paths.append(checklist)
     return sorted(dict.fromkeys(paths))
+
+
+def release_directory_entries(root: Path) -> list[Path]:
+    release_root = root / RELEASE_DOCS_ROOT
+    if not release_root.is_dir():
+        raise MarkdownError(f"{RELEASE_DOCS_ROOT} is missing")
+    return sorted(path.relative_to(root) for path in release_root.iterdir() if path.is_file())
 
 
 def format_location(path: Path, root: Path, line: int) -> str:
@@ -239,19 +251,25 @@ def markdown_anchors(path: Path) -> set[str]:
     return anchors
 
 
-def resolve_repo_link(source_path: Path, root: Path, destination: str, line_number: int, errors: list[str]) -> None:
+def resolve_repo_destination(
+    source_path: Path,
+    root: Path,
+    destination: str,
+    line_number: int,
+    errors: list[str],
+) -> Path | None:
     if not destination:
         errors.append(f"{format_location(source_path, root, line_number)} link destination is empty")
-        return
+        return None
 
     parsed = urlsplit(destination)
     if parsed.scheme in {"http", "https", "mailto"}:
-        return
+        return None
     if parsed.scheme or parsed.netloc:
         errors.append(
             f"{format_location(source_path, root, line_number)} unsupported link scheme: {destination}"
         )
-        return
+        return None
 
     raw_path = unquote(parsed.path)
     if raw_path:
@@ -271,13 +289,13 @@ def resolve_repo_link(source_path: Path, root: Path, destination: str, line_numb
         errors.append(
             f"{format_location(source_path, root, line_number)} link escapes repository: {destination}"
         )
-        return
+        return None
 
     if not resolved_target.exists():
         errors.append(
             f"{format_location(source_path, root, line_number)} link target does not exist: {destination}"
         )
-        return
+        return None
 
     if parsed.fragment:
         if resolved_target.suffix.lower() != ".md":
@@ -285,7 +303,7 @@ def resolve_repo_link(source_path: Path, root: Path, destination: str, line_numb
                 f"{format_location(source_path, root, line_number)} fragment links must target markdown: "
                 f"{destination}"
             )
-            return
+            return None
         fragment = unquote(parsed.fragment).lower()
         anchors = markdown_anchors(resolved_target)
         if fragment not in anchors:
@@ -293,6 +311,65 @@ def resolve_repo_link(source_path: Path, root: Path, destination: str, line_numb
                 f"{format_location(source_path, root, line_number)} markdown anchor does not exist: "
                 f"{destination}"
             )
+            return None
+
+    return resolved_target.relative_to(resolved_root)
+
+
+def resolve_repo_link(source_path: Path, root: Path, destination: str, line_number: int, errors: list[str]) -> None:
+    resolve_repo_destination(source_path, root, destination, line_number, errors)
+
+
+def clean_repo_path_literal(raw: str) -> str:
+    value = raw.strip().strip("<>")
+    while value and value[-1] in ".,;:)]}":
+        value = value[:-1]
+    return value
+
+
+def validate_repo_path_citations(path: Path, root: Path, errors: list[str]) -> int:
+    citation_count = 0
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        for match in REPO_PATH_LITERAL_PATTERN.finditer(line):
+            literal = clean_repo_path_literal(match.group(1))
+            if not literal or "*" in literal:
+                continue
+            target = root / literal
+            if target.is_dir():
+                citation_count += 1
+                continue
+            if not Path(literal).suffix and literal != "CMakeLists.txt":
+                continue
+            if not target.is_file():
+                errors.append(
+                    f"{format_location(path, root, line_number)} repo-relative path target does not exist: "
+                    f"{literal}"
+                )
+                continue
+            citation_count += 1
+    return citation_count
+
+
+def validate_readme_release_toc(root: Path, required_entries: list[Path], errors: list[str]) -> int:
+    readme = root / README_PATH
+    if not readme.is_file():
+        errors.append(f"{README_PATH} is missing")
+        return 0
+
+    masked_lines, _ = parse_markdown(readme, root, errors)
+    linked_entries: set[Path] = set()
+    for line_number, destination in iter_link_destinations(masked_lines):
+        relative_target = resolve_repo_destination(readme, root, destination, line_number, errors)
+        if relative_target is None:
+            continue
+        if relative_target.parent == RELEASE_DOCS_ROOT:
+            linked_entries.add(relative_target)
+
+    missing = sorted(str(path) for path in required_entries if path not in linked_entries)
+    if missing:
+        errors.append(f"{README_PATH} release TOC is missing docs/release entries: " + ", ".join(missing))
+
+    return len(linked_entries)
 
 
 def validate_file(path: Path, root: Path, errors: list[str]) -> tuple[int, int]:
@@ -304,6 +381,8 @@ def validate_file(path: Path, root: Path, errors: list[str]) -> tuple[int, int]:
     for line_number, destination in iter_link_destinations(masked_lines):
         link_count += 1
         resolve_repo_link(path, root, destination, line_number, errors)
+    if path.relative_to(root).parent == RELEASE_DOCS_ROOT:
+        validate_repo_path_citations(path, root, errors)
 
     return link_count, len(blocks)
 
@@ -314,7 +393,14 @@ def write_fixture(root: Path, relative_path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def write_self_check_fixture(root: Path, known_gaps_body: str) -> None:
+def release_readme_body(paths: Iterable[Path]) -> str:
+    lines = ["# Fixture README", "", "## Release Docs", ""]
+    for path in sorted(paths):
+        lines.append(f"- [{path.name}]({path.as_posix()})")
+    return "\n".join(lines) + "\n"
+
+
+def write_self_check_fixture(root: Path, known_gaps_body: str, readme_body: str | None = None) -> None:
     fixture_docs = {
         RELEASE_CHECKLIST: "# Release Signoff Checklist\n",
         RELEASE_DOCS_ROOT / "amflow-example-coverage.md": "# AMFlow Example Coverage Inventory\n",
@@ -325,11 +411,20 @@ def write_self_check_fixture(root: Path, known_gaps_body: str) -> None:
     }
     for relative_path, text in fixture_docs.items():
         write_fixture(root, relative_path, text)
+    write_fixture(
+        root,
+        README_PATH,
+        readme_body
+        if readme_body is not None
+        else release_readme_body(path for path in fixture_docs if path.parent == RELEASE_DOCS_ROOT),
+    )
+    write_fixture(root, Path("tools/reference-harness/scripts/validate_release_markdown.py"), "#!/usr/bin/env python3\n")
 
 
 def validate_root(root: Path) -> tuple[int, int, list[str]]:
     errors: list[str] = []
     paths = release_markdown_paths(root)
+    validate_readme_release_toc(root, release_directory_entries(root), errors)
     link_count = 0
     code_block_count = 0
     for path in paths:
@@ -339,10 +434,15 @@ def validate_root(root: Path) -> tuple[int, int, list[str]]:
     return link_count, code_block_count, errors
 
 
-def expect_self_check_failure(label: str, known_gaps_body: str, expected: str) -> bool:
+def expect_self_check_failure(
+    label: str,
+    known_gaps_body: str,
+    expected: str,
+    readme_body: str | None = None,
+) -> bool:
     with tempfile.TemporaryDirectory(prefix=f"release-markdown-{label}-") as tmp:
         root = Path(tmp)
-        write_self_check_fixture(root, known_gaps_body)
+        write_self_check_fixture(root, known_gaps_body, readme_body=readme_body)
         _, _, errors = validate_root(root)
     expect(errors, f"{label} unexpectedly passed")
     detail = "\n".join(errors)
@@ -385,6 +485,24 @@ python3 tools/reference-harness/scripts/validate_release_markdown.py
             "escaped-link",
             "# Release Known Gaps\n\nSee [escape](../../../outside.md).\n",
             "link escapes repository",
+        ),
+        "readme_toc_missing_entry_rejected": expect_self_check_failure(
+            "missing-readme-toc-entry",
+            "# Release Known Gaps\n\n",
+            "README.md release TOC is missing docs/release entries",
+            readme_body=release_readme_body(
+                (
+                    RELEASE_DOCS_ROOT / "amflow-example-coverage.md",
+                    RELEASE_DOCS_ROOT / "known-gaps.md",
+                    RELEASE_DOCS_ROOT / "m7-closure-evidence.md",
+                    RELEASE_DOCS_ROOT / "re-run-release-readiness.md",
+                )
+            ),
+        ),
+        "broken_repo_path_citation_rejected": expect_self_check_failure(
+            "broken-repo-path-citation",
+            "# Release Known Gaps\n\nSee `tools/reference-harness/specs/missing-sidecar.json`.\n",
+            "repo-relative path target does not exist",
         ),
         "bad_shell_fence_rejected": expect_self_check_failure(
             "bad-shell",

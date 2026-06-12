@@ -3,7 +3,7 @@
   "bundle_root": "m7-release-evidence",
   "digest_scope": "sorted repository-relative release evidence paths plus exact file bytes",
   "evidence_corpus_digest_algorithm": "sha256-length-prefixed-path-and-bytes-v1",
-  "evidence_corpus_sha256": "de114dd6e72d66d007eb72205ead76a5b91aaca3da6f7ad037420760433dfea0",
+  "evidence_corpus_sha256": "c2e2a84a7d1cb861d8068c242a887395e3d327d290a786f629b6498c97b09919",
   "file_count": 22,
   "readiness_sidecar": "tools/reference-harness/specs/m7/lane3/release-readiness.m5-accepted.full-output.json",
   "schema_version": 1,

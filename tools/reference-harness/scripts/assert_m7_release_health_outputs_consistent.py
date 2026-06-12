@@ -106,6 +106,7 @@ def assert_amflow_example_coverage_matches_text(lines: list[str], health: dict[s
         "total",
         "full_compared_output",
         "live_retained_golden",
+        "live_reverified",
         "partial",
         "not_full_runtime",
         "known_gap_rows",
@@ -119,6 +120,7 @@ def assert_amflow_example_coverage_matches_text(lines: list[str], health: dict[s
         "total": "total_example_count",
         "full_compared_output": "full_compared_output_count",
         "live_retained_golden": "live_retained_golden_count",
+        "live_reverified": "live_reverified_count",
         "partial": "partial_retained_or_selected_count",
         "not_full_runtime": "not_full_runtime_count",
         "known_gap_rows": "documented_gap_count",
@@ -142,6 +144,37 @@ def assert_amflow_example_coverage_matches_text(lines: list[str], health: dict[s
     expect(
         required_line(lines, "not_full_runtime_examples: ") == "; ".join(not_full_examples),
         "text/json AMFlow not_full_runtime_examples mismatch",
+    )
+
+    live_reverified_examples = coverage.get("live_reverified_examples")
+    expect(
+        isinstance(live_reverified_examples, list),
+        "amflow_example_coverage.live_reverified_examples must be a list",
+    )
+    expect(
+        len(live_reverified_examples) == expect_nonnegative_int(coverage, "live_reverified_count"),
+        "json AMFlow live_reverified_count does not match example list length",
+    )
+    live_reverified_tokens: list[str] = []
+    for index, entry in enumerate(live_reverified_examples):
+        expect(isinstance(entry, dict), f"live_reverified_examples[{index}] must be an object")
+        example = entry.get("example")
+        date = entry.get("date")
+        detail = entry.get("detail")
+        path = entry.get("path")
+        expect(isinstance(example, str) and example, f"live_reverified_examples[{index}].example missing")
+        expect(isinstance(date, str) and date, f"live_reverified_examples[{index}].date missing")
+        expect(isinstance(detail, str), f"live_reverified_examples[{index}].detail must be a string")
+        expect(isinstance(path, str) and path, f"live_reverified_examples[{index}].path missing")
+        live_reverified_tokens.append(
+            f"{example}={date}" + (f" ({detail})" if detail else "")
+        )
+    expected_live_reverified_line = (
+        "; ".join(live_reverified_tokens) if live_reverified_tokens else "none"
+    )
+    expect(
+        required_line(lines, "amflow_live_reverified: ") == expected_live_reverified_line,
+        "text/json AMFlow live_reverified_examples mismatch",
     )
 
     status_counts = coverage.get("status_counts")

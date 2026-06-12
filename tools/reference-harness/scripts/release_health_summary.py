@@ -39,6 +39,11 @@ WITHHELD_CLAIMS: tuple[str, ...] = (
 SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 AMFLOW_EXAMPLE_COVERAGE = Path("docs/release/amflow-example-coverage.md")
 RELEASE_KNOWN_GAPS = Path("docs/release/known-gaps.md")
+LIVE_RERUN_DOC_TEMPLATE = "docs/release/amflow-live-rerun-{example}.md"
+LAST_REVERIFIED_LINE_PATTERN = re.compile(
+    r"(?m)^last-re-verified:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})(?:\s+\(([^)\n]+)\))?\s*$"
+)
+LAST_REVERIFIED_PREFIX_PATTERN = re.compile(r"(?m)^last-re-verified:\s*(.+)$")
 KNOWN_EXAMPLE_STATUSES = frozenset(
     (
         "reproduced-fully",
@@ -107,12 +112,22 @@ class PerformanceSummary:
 
 
 @dataclass(frozen=True)
+class LiveReverificationSummary:
+    example: str
+    date: str
+    detail: str
+    path: str
+
+
+@dataclass(frozen=True)
 class ExampleCoverageSummary:
     inventory_path: str
     known_gaps_path: str
     total_example_count: int
     full_compared_output_count: int
     live_retained_golden_count: int
+    live_reverified_count: int
+    live_reverified_examples: list[LiveReverificationSummary]
     partial_retained_or_selected_count: int
     not_full_runtime_count: int
     zero_evidence_count: int
@@ -424,6 +439,39 @@ def parse_known_gap_examples(markdown: str) -> list[str]:
     return examples
 
 
+def live_rerun_doc_path(example: str) -> Path:
+    return Path(LIVE_RERUN_DOC_TEMPLATE.format(example=example))
+
+
+def parse_live_reverification_metadata(
+    root: Path,
+    live_examples: list[str],
+) -> list[LiveReverificationSummary]:
+    records: list[LiveReverificationSummary] = []
+    for example in sorted(live_examples):
+        path = live_rerun_doc_path(example)
+        relative = require_repo_file(root, path.as_posix(), f"live rerun doc for {example}")
+        text = (root / relative).read_text(encoding="utf-8")
+        raw_lines = LAST_REVERIFIED_PREFIX_PATTERN.findall(text)
+        expect(
+            len(raw_lines) <= 1,
+            f"{relative} must contain at most one last-re-verified line",
+        )
+        if not raw_lines:
+            continue
+        match = LAST_REVERIFIED_LINE_PATTERN.search(text)
+        expect(match is not None, f"{relative} has malformed last-re-verified line")
+        records.append(
+            LiveReverificationSummary(
+                example=example,
+                date=match.group(1),
+                detail=match.group(2) or "",
+                path=relative,
+            )
+        )
+    return records
+
+
 def summarize_example_coverage_from_paths(
     root: Path,
     inventory_path: Path,
@@ -477,6 +525,12 @@ def summarize_example_coverage_from_paths(
     )
 
     status_counts = Counter(inventory.values())
+    live_examples = [
+        example
+        for example, status in inventory.items()
+        if status == "reproduced-fully-live"
+    ]
+    live_reverified_examples = parse_live_reverification_metadata(root, live_examples)
     zero_evidence_count = sum(status_counts[status] for status in ZERO_EVIDENCE_STATUSES)
     return ExampleCoverageSummary(
         inventory_path=inventory_relative,
@@ -484,6 +538,8 @@ def summarize_example_coverage_from_paths(
         total_example_count=len(inventory),
         full_compared_output_count=status_counts["reproduced-fully"],
         live_retained_golden_count=status_counts["reproduced-fully-live"],
+        live_reverified_count=len(live_reverified_examples),
+        live_reverified_examples=live_reverified_examples,
         partial_retained_or_selected_count=status_counts["reproduced-partial"],
         not_full_runtime_count=len(known_gap_examples),
         zero_evidence_count=zero_evidence_count,
@@ -507,6 +563,11 @@ def render_text(
     benchmark_tokens = [
         f"{benchmark.label} max={benchmark.max_wall_seconds:.2f}s"
         for benchmark in performance.benchmarks
+    ]
+    live_reverified_tokens = [
+        f"{record.example}={record.date}"
+        + (f" ({record.detail})" if record.detail else "")
+        for record in example_coverage.live_reverified_examples
     ]
     lines = [
         "M7 release health summary",
@@ -540,11 +601,14 @@ def render_text(
             f"total={example_coverage.total_example_count} "
             f"full_compared_output={example_coverage.full_compared_output_count} "
             f"live_retained_golden={example_coverage.live_retained_golden_count} "
+            f"live_reverified={example_coverage.live_reverified_count} "
             f"partial={example_coverage.partial_retained_or_selected_count} "
             f"not_full_runtime={example_coverage.not_full_runtime_count} "
             f"known_gap_rows={example_coverage.documented_gap_count} "
             f"zero_evidence={example_coverage.zero_evidence_count}"
         ),
+        "amflow_live_reverified: "
+        + ("; ".join(live_reverified_tokens) if live_reverified_tokens else "none"),
         "not_full_runtime_examples: " + "; ".join(example_coverage.not_full_runtime_examples),
         "blockers: " + ("none" if not readiness.blockers else "; ".join(readiness.blockers)),
         "withheld_claims: " + " ".join(WITHHELD_CLAIMS),
@@ -603,6 +667,16 @@ def render_json(
             "total_example_count": example_coverage.total_example_count,
             "full_compared_output_count": example_coverage.full_compared_output_count,
             "live_retained_golden_count": example_coverage.live_retained_golden_count,
+            "live_reverified_count": example_coverage.live_reverified_count,
+            "live_reverified_examples": [
+                {
+                    "date": record.date,
+                    "detail": record.detail,
+                    "example": record.example,
+                    "path": record.path,
+                }
+                for record in example_coverage.live_reverified_examples
+            ],
             "partial_retained_or_selected_count": example_coverage.partial_retained_or_selected_count,
             "not_full_runtime_count": example_coverage.not_full_runtime_count,
             "zero_evidence_count": example_coverage.zero_evidence_count,

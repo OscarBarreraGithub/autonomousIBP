@@ -29,6 +29,10 @@ SHA256_PATTERN = r"[0-9a-f]{64}"
 INLINE_LINK_PATTERN = re.compile(r"(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)")
 INLINE_CODE_PATTERN = re.compile(r"`([^`\n]+)`")
 EXIT_LINE_PATTERN = re.compile(r"(?m)^([A-Za-z0-9_-]+-exit):\s*(\S+)\s*$")
+LAST_REVERIFIED_LINE_PATTERN = re.compile(
+    r"(?m)^last-re-verified:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})(?:\s+\([^)]+\))?\s*$"
+)
+LAST_REVERIFIED_PREFIX_PATTERN = re.compile(r"(?m)^last-re-verified:\s*(.+)$")
 EXTERNAL_RETAINED_EVIDENCE_MARKERS = (
     "/amflow-verification/reference-harness/",
     "/amflow-verification/work/goldens/",
@@ -48,6 +52,7 @@ class DocStructure:
     path: str
     digest_sha_bullets: int
     exit_lines: list[str]
+    last_reverified: str | None
     evidence_references: int
 
 
@@ -273,11 +278,23 @@ def validate_doc(root: Path, example: str, errors: list[str]) -> DocStructure | 
             f"{relative_path} must include a structured retained evidence reference"
         )
 
+    last_reverified_lines = LAST_REVERIFIED_PREFIX_PATTERN.findall(text)
+    if len(last_reverified_lines) > 1:
+        errors.append(f"{relative_path} must contain at most one last-re-verified line")
+    last_reverified: str | None = None
+    if last_reverified_lines:
+        match = LAST_REVERIFIED_LINE_PATTERN.search(text)
+        if match is None:
+            errors.append(f"{relative_path} has malformed last-re-verified line")
+        else:
+            last_reverified = match.group(0)
+
     return DocStructure(
         example=example,
         path=relative_path,
         digest_sha_bullets=len(sha_bullets),
         exit_lines=exit_lines,
+        last_reverified=last_reverified,
         evidence_references=len(retained_references),
     )
 
@@ -311,6 +328,7 @@ def validate_root(root: Path) -> tuple[dict[str, object], list[str]]:
                 "path": structure.path,
                 "digest_sha_bullets": structure.digest_sha_bullets,
                 "exit_lines": structure.exit_lines,
+                "last_reverified": structure.last_reverified,
                 "evidence_references": structure.evidence_references,
             }
             for structure in structures
@@ -497,6 +515,15 @@ def run_self_check() -> dict[str, object]:
             ),
             "must publish at least three SHA-256 digest bullets",
         ),
+        "malformed_last_reverified_rejected": expect_self_check_failure(
+            "malformed-last-reverified",
+            lambda root: (root / live_doc_path_for("complex_kinematics")).write_text(
+                fixture_doc("complex_kinematics")
+                + "\nlast-re-verified: June 12, 2026\n",
+                encoding="utf-8",
+            ),
+            "malformed last-re-verified line",
+        ),
     }
     expect(all(checks.values()), "live-rerun doc structure self-check failed")
     return {
@@ -542,6 +569,7 @@ def main() -> int:
         "AMFlow live-rerun doc structure validation passed: "
         f"{summary['live_doc_count']} doc(s), "
         f"{sum(doc['digest_sha_bullets'] for doc in summary['docs'])} digest SHA bullet(s), "
+        f"{sum(1 for doc in summary['docs'] if doc['last_reverified'] is not None)} last-reverified line(s), "
         f"{sum(doc['evidence_references'] for doc in summary['docs'])} evidence reference(s)"
     )
     return 0

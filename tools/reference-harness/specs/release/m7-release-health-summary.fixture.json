@@ -5,6 +5,15 @@
     "inventory_path": "docs/release/amflow-example-coverage.md",
     "known_gaps_path": "docs/release/known-gaps.md",
     "live_retained_golden_count": 7,
+    "live_reverified_count": 1,
+    "live_reverified_examples": [
+      {
+        "date": "2026-06-12",
+        "detail": "run.wl redtable/diffeq/sol1/sol2 matched; stdout diverged to 3637da422d9d90eb81ac6bc6b78e2c03d038d32be75f20340bf9595e2a43303e from timing-only log deltas; stderr matched",
+        "example": "differential_equation_solver",
+        "path": "docs/release/amflow-live-rerun-differential_equation_solver.md"
+      }
+    ],
     "not_full_runtime_count": 8,
     "not_full_runtime_examples": [
       "automatic_phasespace",

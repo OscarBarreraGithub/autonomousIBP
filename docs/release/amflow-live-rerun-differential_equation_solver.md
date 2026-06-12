@@ -134,3 +134,5 @@ byte-for-byte, and rerun the upstream DESolver continuation plus asymptotic
 expansion workflow with only sub-precision numeric printing drift in the
 expansion files. This is a live AMFlow retained-golden reproducibility claim,
 not a claim that the C++ runtime now implements the full DESolver workflow.
+
+last-re-verified: 2026-06-12 (run.wl redtable/diffeq/sol1/sol2 matched; stdout diverged to 3637da422d9d90eb81ac6bc6b78e2c03d038d32be75f20340bf9595e2a43303e from timing-only log deltas; stderr matched)

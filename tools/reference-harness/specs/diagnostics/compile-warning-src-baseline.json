@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "scope": "src",
+  "tool": "compile-warning-baseline",
+  "fallback_reason": "clang-tidy 21.1.8 was present but could not complete the src/* scan on this cluster toolchain because clang rejected the system Boost multiprecision headers before analysis completed.",
+  "baseline_commit": "5ed48c6d8698ba047aade129ac367f5465da8bdf",
+  "baseline_compiler": "c++ (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28)",
+  "warning_surface": [
+    "repo CMake target warnings: -Wall -Wextra -Wpedantic",
+    "fallback gate flag: -Werror"
+  ],
+  "werror_demotions_for_baseline_comparison": [
+    "unused-function"
+  ],
+  "status": "diagnostics",
+  "diagnostic_count": 2,
+  "comparison_key": [
+    "path",
+    "warning_option",
+    "message",
+    "occurrence_count"
+  ],
+  "notes": "The CTest gate rebuilds the repo-local src/* targets with BUILD_TESTING=OFF and optional dependency backends disabled. Demoted warning classes are still parsed and compared against this baseline; removed warnings are allowed.",
+  "diagnostics": [
+    {
+      "path": "src/runtime/boundary_generation.cpp",
+      "warning_option": "-Wunused-function",
+      "message": "\u2018std::__cxx11::string amflow::{anonymous}::DescribeCutComponents(const std::vector<amflow::CutkoskyPhaseSpaceCutComponent>&)\u2019 defined but not used",
+      "occurrences": [
+        {
+          "line": 143,
+          "column": 13
+        }
+      ]
+    },
+    {
+      "path": "src/runtime/ending_scheme.cpp",
+      "warning_option": "-Wunused-function",
+      "message": "\u2018std::__cxx11::string amflow::{anonymous}::DescribeCutComponents(const std::vector<amflow::CutkoskyPhaseSpaceCutComponent>&)\u2019 defined but not used",
+      "occurrences": [
+        {
+          "line": 131,
+          "column": 13
+        }
+      ]
+    }
+  ]
+}

@@ -173,6 +173,20 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME amflow-compile-warning-baseline
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_compile_warning_baseline.py
+      --build-dir
+      ${CMAKE_CURRENT_BINARY_DIR}/compile-warning-baseline
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/diagnostics/compile-warning-src-baseline.json
+  )
+  set_tests_properties(amflow-compile-warning-baseline PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 900)
+
+  add_test(
     NAME b64ag-golden-recapture-readiness-self-check
     COMMAND
       ${Python3_EXECUTABLE}

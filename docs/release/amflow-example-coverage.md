@@ -64,23 +64,25 @@ state and comparator surface.
 
 ## Not Full Rows
 
-The remaining eight upstream examples are not full C++ runtime reproductions:
+The remaining eight upstream examples are not full C++ runtime reproductions.
+This list intentionally follows the release-facing order in
+[`known-gaps.md`](known-gaps.md):
 
-- `complex_kinematics` needs full `b61n` live complex eta-contour propagation
-  and endpoint extraction for the full seven-master surface without consuming
-  final AMFlow solution samples.
 - `automatic_phasespace` needs full `b63n` live Cutkosky phase-space boundary
   reconstruction, weighted residue evaluation, endpoint propagation, and packet
   qualification.
+- `complex_kinematics` needs full `b61n` live complex eta-contour propagation
+  and endpoint extraction for the full seven-master surface without consuming
+  final AMFlow solution samples.
+- `differential_equation_solver` needs C++ DESolver coverage for the `diffeq.wl`
+  continuation and asymptotic-expansion workflow, not only the retained AMFlow
+  `sol1` boundary-value comparison.
 - `feynman_prescription` needs the same `b63n` live Cutkosky/prescription-aware
   runtime work plus coverage of both opposite-prescription branches and the
   conjugacy check.
 - `linear_propagator` needs full `b64ag` gauge-link transport, finite-part
   extraction, target reduction over the accepted surface, and a high-precision
   AMFlow comparison packet.
-- `differential_equation_solver` needs C++ DESolver coverage for the `diffeq.wl`
-  continuation and asymptotic-expansion workflow, not only the retained AMFlow
-  `sol1` boundary-value comparison.
 - `spacetime_dimension` now has live Mathematica+AMFlow retained-golden
   reproduction of the full `D0 = 7/3` and `D0 = 1/3` output surface plus the
   dimensional-recurrence check, but the C++ runtime still needs full retained

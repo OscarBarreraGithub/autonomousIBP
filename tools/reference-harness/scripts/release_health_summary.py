@@ -429,6 +429,10 @@ def summarize_example_coverage_from_paths(
         set(not_full_examples) == set(known_gap_examples),
         "not-full example set must match docs/release/known-gaps.md table",
     )
+    expect(
+        not_full_examples == known_gap_examples,
+        "not-full example order must match docs/release/known-gaps.md table",
+    )
     missing_from_inventory = [example for example in not_full_examples if example not in inventory]
     expect(
         not missing_from_inventory,
@@ -770,6 +774,45 @@ def self_check(root: Path) -> None:
                 missing_gap_path.relative_to(root),
             ),
             "not-full example set must match docs/release/known-gaps.md table",
+        )
+        reordered_gap_lines = known_gaps_payload.splitlines()
+        first_gap_index = next(
+            (
+                index
+                for index, line in enumerate(reordered_gap_lines)
+                if line.startswith("| `automatic_phasespace` |")
+            ),
+            None,
+        )
+        second_gap_index = next(
+            (
+                index
+                for index, line in enumerate(reordered_gap_lines)
+                if line.startswith("| `complex_kinematics` |")
+            ),
+            None,
+        )
+        expect(
+            first_gap_index is not None and second_gap_index is not None,
+            "known gaps self-check fixture must contain the first two not-full rows",
+        )
+        reordered_gap_lines[first_gap_index], reordered_gap_lines[second_gap_index] = (
+            reordered_gap_lines[second_gap_index],
+            reordered_gap_lines[first_gap_index],
+        )
+        reordered_gap_payload = "\n".join(reordered_gap_lines)
+        if known_gaps_payload.endswith("\n"):
+            reordered_gap_payload += "\n"
+        reordered_gap_path = Path(temp_dir) / "known-gaps-reordered-not-full.md"
+        reordered_gap_path.write_text(reordered_gap_payload, encoding="utf-8")
+        expect_health_error(
+            "known gaps coverage order check",
+            lambda: summarize_example_coverage_from_paths(
+                root,
+                AMFLOW_EXAMPLE_COVERAGE,
+                reordered_gap_path.relative_to(root),
+            ),
+            "not-full example order must match docs/release/known-gaps.md table",
         )
         unknown_status_payload = coverage_payload.replace(
             "| `automatic_loop` | `examples/automatic_loop/run.wl` | Core solve-series evidence: M5 lane39/lane45 `automatic_loop.eps8`, 126/126 coefficients, min 41 digits; phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. | `reproduced-fully` |",

@@ -131,9 +131,9 @@ The evidence bundle is a packaging step only. It must not be treated as new
 runtime, parity, or qualification evidence.
 
 The health summary's AMFlow example coverage block is an inventory guard. It
-keeps the detailed coverage doc and release known-gaps table aligned, but it
-does not close the listed runtime lanes or change the accepted M7 readiness
-scope.
+keeps the detailed coverage doc and release known-gaps table aligned in both
+content and not-full-row order, but it does not close the listed runtime lanes
+or change the accepted M7 readiness scope.
 
 ## Release Markdown
 

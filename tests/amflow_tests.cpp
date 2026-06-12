@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <sstream>
@@ -343,6 +344,262 @@ std::string ReadFile(const std::filesystem::path& path) {
   }
   return std::string((std::istreambuf_iterator<char>(stream)),
                      std::istreambuf_iterator<char>());
+}
+
+struct CTestTimeoutRequirement {
+  std::string name;
+  int minimum_timeout_seconds = 0;
+  std::string rationale;
+};
+
+std::size_t FindMatchingCMakeParenthesis(const std::string& text,
+                                         const std::size_t open_position) {
+  int depth = 0;
+  bool quoted = false;
+  bool escaped = false;
+  for (std::size_t index = open_position; index < text.size(); ++index) {
+    const char character = text[index];
+    if (quoted) {
+      if (escaped) {
+        escaped = false;
+      } else if (character == '\\') {
+        escaped = true;
+      } else if (character == '"') {
+        quoted = false;
+      }
+      continue;
+    }
+    if (character == '"') {
+      quoted = true;
+      continue;
+    }
+    if (character == '(') {
+      ++depth;
+    } else if (character == ')') {
+      --depth;
+      if (depth == 0) {
+        return index;
+      }
+    }
+  }
+  throw std::runtime_error("unclosed CMake call parenthesis");
+}
+
+std::vector<std::string> ExtractCMakeCallBodies(const std::string& text,
+                                                const std::string& call_name) {
+  std::vector<std::string> bodies;
+  std::size_t search_position = 0;
+  while ((search_position = text.find(call_name, search_position)) != std::string::npos) {
+    std::size_t open_position = search_position + call_name.size();
+    while (open_position < text.size() &&
+           std::isspace(static_cast<unsigned char>(text[open_position])) != 0) {
+      ++open_position;
+    }
+    if (open_position >= text.size() || text[open_position] != '(') {
+      search_position += call_name.size();
+      continue;
+    }
+    const std::size_t close_position = FindMatchingCMakeParenthesis(text, open_position);
+    bodies.push_back(text.substr(open_position + 1, close_position - open_position - 1));
+    search_position = close_position + 1;
+  }
+  return bodies;
+}
+
+std::vector<std::string> TokenizeCMakeArguments(const std::string& body) {
+  std::vector<std::string> tokens;
+  std::string token;
+  bool quoted = false;
+  bool escaped = false;
+  for (const char character : body) {
+    if (quoted) {
+      if (escaped) {
+        token.push_back(character);
+        escaped = false;
+      } else if (character == '\\') {
+        escaped = true;
+      } else if (character == '"') {
+        quoted = false;
+      } else {
+        token.push_back(character);
+      }
+      continue;
+    }
+    if (character == '"') {
+      quoted = true;
+      continue;
+    }
+    if (std::isspace(static_cast<unsigned char>(character)) != 0) {
+      if (!token.empty()) {
+        tokens.push_back(token);
+        token.clear();
+      }
+    } else {
+      token.push_back(character);
+    }
+  }
+  if (!token.empty()) {
+    tokens.push_back(token);
+  }
+  return tokens;
+}
+
+bool ContainsToken(const std::vector<std::string>& values, const std::string& value) {
+  return std::find(values.begin(), values.end(), value) != values.end();
+}
+
+int ParsePositiveIntegerToken(const std::string& token, const std::string& context) {
+  Expect(!token.empty(), context + " must not be empty");
+  Expect(std::all_of(token.begin(), token.end(), [](const char character) {
+           return std::isdigit(static_cast<unsigned char>(character)) != 0;
+         }),
+         context + " must be a positive integer literal, got: " + token);
+  const int value = std::stoi(token);
+  Expect(value > 0, context + " must be positive");
+  return value;
+}
+
+std::vector<std::string> ParseCTestNamesFromCMakeText(const std::string& cmake_text) {
+  std::vector<std::string> names;
+  for (const std::string& body : ExtractCMakeCallBodies(cmake_text, "add_test")) {
+    const std::vector<std::string> tokens = TokenizeCMakeArguments(body);
+    const auto name_it = std::find(tokens.begin(), tokens.end(), "NAME");
+    Expect(name_it != tokens.end() && std::next(name_it) != tokens.end(),
+           "add_test block is missing NAME");
+    names.push_back(*std::next(name_it));
+  }
+  for (std::size_t left = 0; left < names.size(); ++left) {
+    for (std::size_t right = left + 1; right < names.size(); ++right) {
+      Expect(names[left] != names[right], "duplicate CTest name: " + names[left]);
+    }
+  }
+  return names;
+}
+
+int CTestTimeoutSecondsFromCMakeText(const std::string& cmake_text,
+                                     const std::vector<std::string>& test_names,
+                                     const std::string& test_name) {
+  int timeout_seconds = -1;
+  for (const std::string& body : ExtractCMakeCallBodies(cmake_text, "set_tests_properties")) {
+    const std::vector<std::string> tokens = TokenizeCMakeArguments(body);
+    const auto properties_it = std::find(tokens.begin(), tokens.end(), "PROPERTIES");
+    Expect(properties_it != tokens.end(), "set_tests_properties block is missing PROPERTIES");
+    Expect(properties_it != tokens.begin(), "set_tests_properties block has no test name");
+
+    for (auto target_it = tokens.begin(); target_it != properties_it; ++target_it) {
+      Expect(ContainsToken(test_names, *target_it),
+             "set_tests_properties references unknown CTest: " + *target_it);
+    }
+
+    const bool applies_to_test =
+        std::find(tokens.begin(), properties_it, test_name) != properties_it;
+    if (!applies_to_test) {
+      continue;
+    }
+    for (auto property_it = std::next(properties_it); property_it != tokens.end();
+         ++property_it) {
+      if (*property_it != "TIMEOUT") {
+        continue;
+      }
+      Expect(std::next(property_it) != tokens.end(),
+             test_name + " CTest TIMEOUT is missing its value");
+      Expect(timeout_seconds < 0, test_name + " has duplicate CTest TIMEOUT properties");
+      timeout_seconds = ParsePositiveIntegerToken(*std::next(property_it),
+                                                  test_name + " CTest TIMEOUT");
+    }
+  }
+  return timeout_seconds;
+}
+
+void AuditCTestTimeoutPolicyText(
+    const std::string& cmake_text,
+    const std::vector<CTestTimeoutRequirement>& requirements) {
+  const std::vector<std::string> test_names = ParseCTestNamesFromCMakeText(cmake_text);
+  Expect(!test_names.empty(), "CMakeLists.txt should define at least one CTest test");
+  for (const CTestTimeoutRequirement& requirement : requirements) {
+    Expect(ContainsToken(test_names, requirement.name),
+           "slow CTest requirement references missing test: " + requirement.name);
+    const int timeout_seconds =
+        CTestTimeoutSecondsFromCMakeText(cmake_text, test_names, requirement.name);
+    Expect(timeout_seconds >= 0,
+           requirement.name + " is missing CTest TIMEOUT; " + requirement.rationale);
+    Expect(timeout_seconds >= requirement.minimum_timeout_seconds,
+           requirement.name + " CTest TIMEOUT " + std::to_string(timeout_seconds) +
+               "s is below required " +
+               std::to_string(requirement.minimum_timeout_seconds) + "s; " +
+               requirement.rationale);
+  }
+}
+
+std::vector<CTestTimeoutRequirement> SlowCTestTimeoutRequirements() {
+  return {
+      {"amflow-tests", 600,
+       "wraps the SolveSeries CLI cases including coupled eta-infinity initial data"},
+      {"singular-runtime-lane-tests", 600,
+       "runs the monolithic singular-runtime lane executable"},
+      {"b61n-publication-audit-trail-query-self-check", 600,
+       "queries singular-runtime audit output through the compiled test binary"},
+      {"b61n-publication-audit-fingerprint-regenerator-self-check", 600,
+       "regenerates singular-runtime audit fingerprints through the compiled test binary"},
+      {"b61n-parity-status-summary", 600,
+       "includes the singular-runtime audit binary in the parity summary path"},
+      {"cutkosky-weighted-residue-tests", 300,
+       "runs the compiled weighted-residue runtime suite"},
+      {"b63n-d7-numeric-point-binding-sweep", 180,
+       "runs a numeric binding sweep through the weighted-residue binary"},
+      {"b63n-d7-numeric-binding-format-invariance", 180,
+       "runs numeric binding format checks through the weighted-residue binary"},
+      {"b63n-weighted-residue-fingerprint-regenerator-self-check", 300,
+       "regenerates weighted-residue fingerprints through the compiled test binary"},
+      {"b63n-scoped-gate-audit-trail-query-self-check", 300,
+       "queries scoped gate audit output through the compiled test binary"},
+      {"b63n-parity-status-summary", 300,
+       "includes the weighted-residue audit binary in the parity summary path"},
+  };
+}
+
+void ExpectCTestTimeoutPolicyFailure(const std::string& cmake_text,
+                                     const std::string& expected_substring) {
+  try {
+    AuditCTestTimeoutPolicyText(
+        cmake_text,
+        {{"slow-fixture-test", 600, "fixture slow test requires an explicit timeout"}});
+  } catch (const std::runtime_error& error) {
+    Expect(std::string(error.what()).find(expected_substring) != std::string::npos,
+           "unexpected CTest timeout policy self-check failure: " +
+               std::string(error.what()));
+    return;
+  }
+  throw std::runtime_error("CTest timeout policy self-check fixture unexpectedly passed");
+}
+
+void CTestTimeoutPolicySelfCheck() {
+  const std::string passing_fixture =
+      "include(CTest)\n"
+      "add_test(NAME slow-fixture-test COMMAND slow-fixture-test)\n"
+      "set_tests_properties(slow-fixture-test PROPERTIES\n"
+      "  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}\n"
+      "  TIMEOUT 600)\n"
+      "add_test(NAME fast-fixture-test COMMAND fast-fixture-test)\n"
+      "set_tests_properties(fast-fixture-test PROPERTIES\n"
+      "  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})\n";
+  AuditCTestTimeoutPolicyText(
+      passing_fixture,
+      {{"slow-fixture-test", 600, "fixture slow test requires an explicit timeout"}});
+
+  std::string missing_timeout = passing_fixture;
+  ReplaceFirst(missing_timeout, "\n  TIMEOUT 600", "");
+  ExpectCTestTimeoutPolicyFailure(missing_timeout, "missing CTest TIMEOUT");
+
+  std::string short_timeout = passing_fixture;
+  ReplaceFirst(short_timeout, "TIMEOUT 600", "TIMEOUT 60");
+  ExpectCTestTimeoutPolicyFailure(short_timeout, "below required");
+
+  std::string unknown_property_target = passing_fixture;
+  unknown_property_target +=
+      "set_tests_properties(missing-fixture-test PROPERTIES TIMEOUT 600)\n";
+  ExpectCTestTimeoutPolicyFailure(unknown_property_target,
+                                  "references unknown CTest");
 }
 
 std::vector<std::string> SortedRegularFileNames(const std::filesystem::path& directory) {
@@ -51803,6 +52060,24 @@ void ExtractAmflowSolveSeriesStateSelfCheckCoversMatrixAndBoundaryMetadataTest()
                  "AMFlow solve-series state extractor should infer the eta-origin pole");
 }
 
+void CTestTimeoutPolicyCoversSlowRuntimeSuitesTest() {
+  const std::filesystem::path source_root = std::filesystem::path(AMFLOW_SOURCE_DIR);
+  const std::string cmake_text = ReadFile(source_root / "CMakeLists.txt");
+  AuditCTestTimeoutPolicyText(cmake_text, SlowCTestTimeoutRequirements());
+
+  const std::string amflow_tests_source =
+      ReadFile(source_root / "tests/amflow_tests.cpp");
+  ExpectContains(
+      amflow_tests_source,
+      "void SolveSeriesCliEtaInfinityInitialDataValidatesCoupledSyntheticMastersTest()",
+      "timeout policy must stay anchored to the coupled SolveSeries eta-infinity test");
+  ExpectContains(
+      amflow_tests_source,
+      "SolveSeriesCliEtaInfinityInitialDataValidatesCoupledSyntheticMastersTest();",
+      "coupled SolveSeries eta-infinity test must remain wired into amflow-tests");
+  CTestTimeoutPolicySelfCheck();
+}
+
 void Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-phase0-reference-packet-set-compare-self-check",
@@ -57233,6 +57508,7 @@ int main() {
     SolveSeriesCliUsesRetainedFiniteOutputSamplesAtBoundaryTest();
     SolveSeriesCliReconstructsFiniteSolutionBasisOutputTest();
     SolveSeriesCliRejectsUnreconstructedFiniteSolutionOutputTest();
+    CTestTimeoutPolicyCoversSlowRuntimeSuitesTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();

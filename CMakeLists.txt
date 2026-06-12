@@ -809,7 +809,8 @@ if(BUILD_TESTING)
   amflow_apply_default_warnings(singular-runtime-lane-tests)
   add_test(NAME singular-runtime-lane-tests COMMAND singular-runtime-lane-tests)
   set_tests_properties(singular-runtime-lane-tests PROPERTIES
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 900)
   add_test(
     NAME b61n-publication-audit-trail-query-self-check
     COMMAND
@@ -820,7 +821,8 @@ if(BUILD_TESTING)
       $<TARGET_FILE:singular-runtime-lane-tests>)
   set_tests_properties(b61n-publication-audit-trail-query-self-check
     PROPERTIES
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 900)
   add_test(
     NAME b61n-publication-audit-fingerprint-regenerator-self-check
     COMMAND
@@ -831,7 +833,8 @@ if(BUILD_TESTING)
       $<TARGET_FILE:singular-runtime-lane-tests>)
   set_tests_properties(b61n-publication-audit-fingerprint-regenerator-self-check
     PROPERTIES
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 900)
   add_test(
     NAME b61n-parity-status-summary
     COMMAND
@@ -844,7 +847,8 @@ if(BUILD_TESTING)
       $<TARGET_FILE:singular-runtime-lane-tests>)
   set_tests_properties(b61n-parity-status-summary
     PROPERTIES
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 900)
   add_test(
     NAME b61n-parity-status-summary-self-check
     COMMAND
@@ -881,21 +885,24 @@ if(BUILD_TESTING)
     NAME cutkosky-weighted-residue-tests
     COMMAND cutkosky-weighted-residue-tests)
   set_tests_properties(cutkosky-weighted-residue-tests PROPERTIES
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 600)
   add_test(
     NAME b63n-d7-numeric-point-binding-sweep
     COMMAND
       cutkosky-weighted-residue-tests
       --check-b63n-d7-numeric-point-binding-sweep)
   set_tests_properties(b63n-d7-numeric-point-binding-sweep PROPERTIES
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 300)
   add_test(
     NAME b63n-d7-numeric-binding-format-invariance
     COMMAND
       cutkosky-weighted-residue-tests
       --check-b63n-d7-numeric-binding-format-invariance)
   set_tests_properties(b63n-d7-numeric-binding-format-invariance PROPERTIES
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 300)
   add_test(
     NAME b63n-weighted-residue-fingerprint-regenerator-self-check
     COMMAND
@@ -906,7 +913,8 @@ if(BUILD_TESTING)
       $<TARGET_FILE:cutkosky-weighted-residue-tests>)
   set_tests_properties(b63n-weighted-residue-fingerprint-regenerator-self-check
     PROPERTIES
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 600)
   add_test(
     NAME b63n-scoped-gate-audit-trail-query-self-check
     COMMAND
@@ -917,7 +925,8 @@ if(BUILD_TESTING)
       $<TARGET_FILE:cutkosky-weighted-residue-tests>)
   set_tests_properties(b63n-scoped-gate-audit-trail-query-self-check
     PROPERTIES
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 600)
   add_test(
     NAME b63n-parity-status-summary
     COMMAND
@@ -930,7 +939,8 @@ if(BUILD_TESTING)
       $<TARGET_FILE:cutkosky-weighted-residue-tests>)
   set_tests_properties(b63n-parity-status-summary
     PROPERTIES
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 600)
   add_test(
     NAME b63n-parity-status-summary-self-check
     COMMAND

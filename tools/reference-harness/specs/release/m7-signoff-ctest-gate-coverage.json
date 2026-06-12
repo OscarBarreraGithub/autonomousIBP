@@ -13,6 +13,14 @@
       "reason": "Release signoff must keep the upstream-version-pin validator's negative fixtures live."
     },
     {
+      "name": "amflow-public-symbol-surface",
+      "reason": "Release signoff must fail if the exported amflow C++ symbol surface changes without an explicit ABI manifest update."
+    },
+    {
+      "name": "amflow-public-symbol-surface-self-check",
+      "reason": "Release signoff must keep the public symbol-surface verifier's parser, filter, and drift-reporting fixtures live."
+    },
+    {
       "name": "boundary-sidecar-provenance-audit",
       "reason": "Release signoff must verify boundary sidecar source hashes and semantic evidence links used by post-M7 parity summaries."
     },

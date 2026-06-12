@@ -128,6 +128,30 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME amflow-public-symbol-surface
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_public_symbol_surface.py
+      --target
+      $<TARGET_FILE:amflow>
+      --manifest
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/abi/amflow-public-symbols.txt
+  )
+  set_tests_properties(amflow-public-symbol-surface PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME amflow-public-symbol-surface-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_public_symbol_surface.py
+      --self-check
+  )
+  set_tests_properties(amflow-public-symbol-surface-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b64ag-golden-recapture-readiness-self-check
     COMMAND
       ${Python3_EXECUTABLE}

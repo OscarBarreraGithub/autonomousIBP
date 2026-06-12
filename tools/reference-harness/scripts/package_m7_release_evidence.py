@@ -187,6 +187,20 @@ def assert_manifest_source_commit_matches_head(root: Path, manifest: dict[str, A
         )
 
 
+def assert_manifest_readiness_sidecar_schema(root: Path, manifest: dict[str, Any]) -> None:
+    readiness_sidecar = require_repo_file(
+        root,
+        require_manifest_string(manifest, "readiness_sidecar", "bundle manifest"),
+        "bundle manifest readiness_sidecar",
+    )
+    require_m7_sidecar_schema(
+        root,
+        readiness_sidecar,
+        label="bundle manifest readiness_sidecar",
+        expected_schema="release-readiness-output",
+    )
+
+
 def require_manifest_string_list(
     manifest: dict[str, Any],
     field: str,
@@ -434,6 +448,7 @@ def assert_output_path_does_not_overwrite_inputs(
 
 def write_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
     files = validate_manifest_shape(manifest)
+    assert_manifest_readiness_sidecar_schema(root, manifest)
     assert_output_path_does_not_overwrite_inputs(root, output_path, files)
     bundle_root = manifest["bundle_root"]
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -503,6 +518,7 @@ def assert_reproducible_archive_member(member: tarfile.TarInfo, expected_size: i
 def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
     files = validate_manifest_shape(manifest)
     assert_manifest_source_commit_matches_head(root, manifest)
+    assert_manifest_readiness_sidecar_schema(root, manifest)
     expected_corpus_digest = manifest.get("evidence_corpus_sha256")
     actual_corpus_digest = evidence_corpus_digest(
         root,
@@ -552,6 +568,7 @@ def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> 
 
 def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
     files = validate_manifest_shape(manifest)
+    assert_manifest_readiness_sidecar_schema(root, manifest)
     expected_names = sorted(
         [f"{manifest['bundle_root']}/{MANIFEST_NAME}"]
         + [entry["archive_path"] for entry in files]
@@ -737,6 +754,16 @@ def self_check(root: Path) -> None:
             lambda: validate_bundle(root, output_path, missing_readiness_manifest),
         )
 
+        non_readiness_manifest = clone_manifest(manifest)
+        non_readiness_manifest["readiness_sidecar"] = (
+            "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json"
+        )
+        expect_bundle_error(
+            "manifest readiness sidecar schema check",
+            "bundle manifest readiness_sidecar must have schema release-readiness-output",
+            lambda: validate_bundle(root, output_path, non_readiness_manifest),
+        )
+
         missing_claim_manifest = clone_manifest(manifest)
         missing_claim_manifest["withheld_claims"] = missing_claim_manifest["withheld_claims"][:-1]
         expect_bundle_error(
@@ -763,37 +790,34 @@ def self_check(root: Path) -> None:
             lambda: validate_bundle(root, output_path, unsorted_manifest),
         )
 
-        collision_root = Path(temp_dir) / "collision-root"
-        collision_source = collision_root / "a" / "readiness.json"
-        collision_source.parent.mkdir(parents=True)
-        collision_data = b"{\"ready\":true}\n"
-        collision_source.write_bytes(collision_data)
-        collision_manifest = {
-            "schema_version": 1,
-            "bundle_kind": "m7-release-evidence-bundle",
-            "source_commit": "0" * 40,
-            "readiness_sidecar": "a/readiness.json",
-            "bundle_root": DEFAULT_BUNDLE_ROOT,
-            "file_count": 1,
-            "evidence_corpus_digest_algorithm": EVIDENCE_CORPUS_DIGEST_ALGORITHM,
-            "evidence_corpus_sha256": evidence_corpus_digest_from_records(
-                [("a/readiness.json", collision_data)]
-            ),
-            "files": [
+        with tempfile.TemporaryDirectory(prefix="m7-release-evidence-collision-", dir=root) as collision_dir:
+            collision_source = Path(collision_dir) / "input.json"
+            collision_data = b"{\"status\":\"fixture\"}\n"
+            collision_source.write_bytes(collision_data)
+            collision_relative = collision_source.relative_to(root).as_posix()
+            collision_manifest = clone_manifest(manifest)
+            collision_manifest["files"].append(
                 {
-                    "path": "a/readiness.json",
-                    "archive_path": f"{DEFAULT_BUNDLE_ROOT}/a/readiness.json",
+                    "path": collision_relative,
+                    "archive_path": f"{manifest['bundle_root']}/{collision_relative}",
                     "bytes": len(collision_data),
                     "sha256": sha256_hex(collision_data),
                 }
-            ],
-            "withheld_claims": list(WITHHELD_CLAIMS),
-        }
-        expect_bundle_error(
-            "output collision with evidence input check",
-            "output path would overwrite bundled evidence input",
-            lambda: write_bundle(collision_root, collision_source, collision_manifest),
-        )
+            )
+            collision_manifest["files"] = sorted(
+                collision_manifest["files"],
+                key=lambda entry: entry["path"],
+            )
+            collision_manifest["file_count"] = len(collision_manifest["files"])
+            collision_manifest["evidence_corpus_sha256"] = evidence_corpus_digest(
+                root,
+                [entry["path"] for entry in collision_manifest["files"]],
+            )
+            expect_bundle_error(
+                "output collision with evidence input check",
+                "output path would overwrite bundled evidence input",
+                lambda: write_bundle(root, collision_source, collision_manifest),
+            )
 
         expect_bundle_error(
             "readiness schema anchor check",

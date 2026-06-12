@@ -58,6 +58,7 @@ The checklist schema consumed by these producers is
 | [`audit_m7_sidecar_inventory.py`](../../tools/reference-harness/scripts/audit_m7_sidecar_inventory.py) | List committed M7 sidecars by accepted or unaccepted status. Its optional `--m7-root` is guarded as a repository-relative directory under the checkout. | `m7-release-sidecar-inventory-audit` and `m7-release-sidecar-inventory-root-guard`. |
 | [`list_m7_unaccepted_sidecars.py`](../../tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py) | Print only the unaccepted subset from the same inventory classifier for focused review queue triage. Its self-check verifies queue render/count invariants and inherited root guard failures. | `m7-release-unaccepted-sidecar-review-queue` and `m7-release-unaccepted-sidecar-review-queue-self-check`. |
 | [`verify_m7_release_readiness_sidecar_references.py`](../../tools/reference-harness/scripts/verify_m7_release_readiness_sidecar_references.py) | Verify the accepted readiness sidecar references existing, accepted M7 JSON sidecars and no stale unaccepted substitutes. Its optional `--m7-root` uses the same repository-relative root guard as the inventory audit. | `m7-release-readiness-sidecar-references`. |
+| [`verify_m5_m6_m7_cross_links.py`](../../tools/reference-harness/scripts/verify_m5_m6_m7_cross_links.py) | Verify accepted M5 packets, accepted M6 summaries, accepted M7 readiness/signoff sidecars, and the release bundle manifest remain mutually linked. Its self-check rejects missing M5 packets, unaccepted M6 summaries, unaccepted M7 signoffs, and bundle omissions. | `m5-m6-m7-cross-link-closure`. |
 
 Useful inspection commands:
 
@@ -70,6 +71,7 @@ python3 tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py --format 
 python3 tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py --format json
 python3 tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py --self-check
 python3 tools/reference-harness/scripts/verify_m7_release_readiness_sidecar_references.py
+python3 tools/reference-harness/scripts/verify_m5_m6_m7_cross_links.py --self-check
 ```
 
 `audit_m7_sidecar_inventory.py --format json` is the most direct machine-readable

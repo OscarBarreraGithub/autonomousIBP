@@ -616,6 +616,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m5-m6-m7-cross-link-closure
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m5_m6_m7_cross_links.py
+      --self-check
+  )
+  set_tests_properties(m5-m6-m7-cross-link-closure PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-health-summary
     COMMAND
       ${Python3_EXECUTABLE}

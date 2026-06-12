@@ -5,8 +5,14 @@
     "inventory_path": "docs/release/amflow-example-coverage.md",
     "known_gaps_path": "docs/release/known-gaps.md",
     "live_retained_golden_count": 7,
-    "live_reverified_count": 3,
+    "live_reverified_count": 4,
     "live_reverified_examples": [
+      {
+        "date": "2026-06-12",
+        "detail": "sol live and retained hashes matched f5668551872500393407710619598aa196f08635c93d13c1aa5852aefd6e7207 byte-for-byte; Wolfram SameQ=True for 7 rules; stdout diverged to dfc93dab3651a3a5bd7a89e7bf1798c7594234d79d8c4256462e65ec8bb2205f from timing-only log deltas; stderr matched",
+        "example": "complex_kinematics",
+        "path": "docs/release/amflow-live-rerun-complex_kinematics.md"
+      },
       {
         "date": "2026-06-12",
         "detail": "run.wl redtable/diffeq/sol1/sol2 matched; stdout diverged to 3637da422d9d90eb81ac6bc6b78e2c03d038d32be75f20340bf9595e2a43303e from timing-only log deltas; stderr matched",

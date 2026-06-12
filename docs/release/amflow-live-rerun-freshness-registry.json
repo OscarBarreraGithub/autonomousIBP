@@ -1,12 +1,6 @@
 {
   "pending_first_reverify": [
     {
-      "example": "complex_kinematics",
-      "path": "docs/release/amflow-live-rerun-complex_kinematics.md",
-      "status": "pending-first-re-verify",
-      "reason": "Awaiting first post-rotation last-re-verified metadata entry."
-    },
-    {
       "example": "feynman_prescription",
       "path": "docs/release/amflow-live-rerun-feynman_prescription.md",
       "status": "pending-first-re-verify",

@@ -112,3 +112,5 @@ AMFlow reproducibility claim for Mathematica+AMFlow data generation. It does
 not claim new C++ full complex eta-contour propagation, eta=0 endpoint
 extraction, optional phase-0 packet qualification, or `b61n` runtime-lane
 closure.
+
+last-re-verified: 2026-06-12 (sol live and retained hashes matched f5668551872500393407710619598aa196f08635c93d13c1aa5852aefd6e7207 byte-for-byte; Wolfram SameQ=True for 7 rules; stdout diverged to dfc93dab3651a3a5bd7a89e7bf1798c7594234d79d8c4256462e65ec8bb2205f from timing-only log deltas; stderr matched)

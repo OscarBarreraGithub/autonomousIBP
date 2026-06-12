@@ -89,6 +89,87 @@ def expect_object(payload: dict[str, Any], field: str) -> dict[str, Any]:
     return value
 
 
+def expect_string_list(payload: dict[str, Any], field: str) -> list[str]:
+    value = payload.get(field)
+    expect(isinstance(value, list), f"{field} must be a list")
+    expect(all(isinstance(item, str) for item in value), f"{field} must contain strings")
+    return value
+
+
+def assert_amflow_example_coverage_matches_text(lines: list[str], health: dict[str, Any]) -> None:
+    coverage = expect_object(health, "amflow_example_coverage")
+    coverage_text = key_values(
+        required_line(lines, "amflow_example_coverage: "),
+        "amflow_example_coverage",
+    )
+    expected_keys = {
+        "total",
+        "full_compared_output",
+        "live_retained_golden",
+        "partial",
+        "not_full_runtime",
+        "known_gap_rows",
+        "zero_evidence",
+    }
+    expect(
+        set(coverage_text) == expected_keys,
+        "text AMFlow example coverage keys drifted",
+    )
+    field_mapping = {
+        "total": "total_example_count",
+        "full_compared_output": "full_compared_output_count",
+        "live_retained_golden": "live_retained_golden_count",
+        "partial": "partial_retained_or_selected_count",
+        "not_full_runtime": "not_full_runtime_count",
+        "known_gap_rows": "documented_gap_count",
+        "zero_evidence": "zero_evidence_count",
+    }
+    for text_key, json_key in field_mapping.items():
+        expect(
+            coverage_text.get(text_key) == str(expect_nonnegative_int(coverage, json_key)),
+            f"text/json AMFlow example coverage {json_key} mismatch",
+        )
+
+    not_full_examples = expect_string_list(coverage, "not_full_runtime_examples")
+    expect(
+        len(not_full_examples) == expect_nonnegative_int(coverage, "not_full_runtime_count"),
+        "json AMFlow not_full_runtime_count does not match example list length",
+    )
+    expect(
+        len(not_full_examples) == expect_nonnegative_int(coverage, "documented_gap_count"),
+        "json AMFlow documented_gap_count does not match example list length",
+    )
+    expect(
+        required_line(lines, "not_full_runtime_examples: ") == "; ".join(not_full_examples),
+        "text/json AMFlow not_full_runtime_examples mismatch",
+    )
+
+    status_counts = coverage.get("status_counts")
+    expect(isinstance(status_counts, dict), "amflow_example_coverage.status_counts must be an object")
+    for status, count in status_counts.items():
+        expect(isinstance(status, str) and status, "AMFlow status_counts keys must be non-empty strings")
+        expect(type(count) is int and count >= 0, f"AMFlow status count must be nonnegative: {status}")
+    expect(
+        sum(status_counts.values()) == expect_nonnegative_int(coverage, "total_example_count"),
+        "AMFlow status_counts do not sum to total_example_count",
+    )
+    expect(
+        status_counts.get("reproduced-fully", 0)
+        == expect_nonnegative_int(coverage, "full_compared_output_count"),
+        "AMFlow reproduced-fully count mismatch",
+    )
+    expect(
+        status_counts.get("reproduced-fully-live", 0)
+        == expect_nonnegative_int(coverage, "live_retained_golden_count"),
+        "AMFlow reproduced-fully-live count mismatch",
+    )
+    expect(
+        status_counts.get("reproduced-partial", 0)
+        == expect_nonnegative_int(coverage, "partial_retained_or_selected_count"),
+        "AMFlow reproduced-partial count mismatch",
+    )
+
+
 def assert_text_matches_json(text: str, health: dict[str, Any]) -> None:
     lines = text.splitlines()
     expect(lines[:1] == ["M7 release health summary"], "text header drifted")
@@ -179,6 +260,8 @@ def assert_text_matches_json(text: str, health: dict[str, Any]) -> None:
         required_line(lines, "performance_benchmarks: ") == "; ".join(expected_benchmarks),
         "text/json performance benchmark list mismatch",
     )
+
+    assert_amflow_example_coverage_matches_text(lines, health)
 
     blockers = health.get("blockers")
     expect(isinstance(blockers, list), "health blockers must be a list")

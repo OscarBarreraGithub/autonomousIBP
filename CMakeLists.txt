@@ -404,6 +404,26 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m5-golden-fingerprint-pins
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m5_golden_fingerprint_pins.py
+      --verify
+  )
+  set_tests_properties(m5-golden-fingerprint-pins PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m5-golden-fingerprint-pins-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m5_golden_fingerprint_pins.py
+      --self-check
+  )
+  set_tests_properties(m5-golden-fingerprint-pins-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-markdown-docs-validation
     COMMAND
       ${Python3_EXECUTABLE}

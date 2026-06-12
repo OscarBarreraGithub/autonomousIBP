@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "package": "AMFlow",
+  "expected": {
+    "version": "1.1",
+    "release_date": "5-Jun-2022"
+  },
+  "source": {
+    "url": "https://gitlab.com/multiloop-pku/amflow.git",
+    "requested_ref": "1.1",
+    "annotated_tag_object": "a29fbdfe330ab172fe5ccdafcac2d6ec9211800e",
+    "resolved_commit": "775162498ab18493c45254b861669b4151b841ee",
+    "amflow_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/inputs/upstream/amflow",
+    "package_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/inputs/upstream/amflow/AMFlow.m",
+    "package_sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add"
+  },
+  "wolfram": {
+    "wolframscript": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/wolframscript",
+    "version": "13.3.0 for Linux x86 (64-bit) (June 3, 2023)"
+  },
+  "probe": {
+    "package_info_symbol": "AMFlow`Private`$PackageInfo",
+    "version_expression": "AMFlow`Private`$PackageInfo[[1]]",
+    "release_date_expression": "AMFlow`Private`$PackageInfo[[2]]"
+  },
+  "verified_observation": {
+    "observed_at_utc": "2026-06-12T14:44:48Z",
+    "package_info": [
+      "1.1",
+      "5-Jun-2022"
+    ],
+    "probe_command": "wolframscript -file probe.wls; probe loads AMFlow.m and prints AMFlow`Private`$PackageInfo"
+  }
+}

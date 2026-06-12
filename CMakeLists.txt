@@ -90,6 +90,27 @@ if(BUILD_TESTING)
     TIMEOUT 2400)
 
   add_test(
+    NAME amflow-upstream-version-pin
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_amflow_upstream_version_pin.py
+      --verify
+  )
+  set_tests_properties(amflow-upstream-version-pin PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME amflow-upstream-version-pin-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_amflow_upstream_version_pin.py
+      --self-check
+  )
+  set_tests_properties(amflow-upstream-version-pin-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b64ag-golden-recapture-readiness-self-check
     COMMAND
       ${Python3_EXECUTABLE}

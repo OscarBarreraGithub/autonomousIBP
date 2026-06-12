@@ -41,6 +41,14 @@ the upstream AMFlow scripts:
 | `user_defined_amfmode` | Needs end-to-end execution of the user-defined `AMFMode` hook through eta=0 endpoint extraction on the full requested target surface. |
 | `user_defined_ending` | Live AMFlow rerun coverage now exists for both `final_Tradition` and `final_usr`, including manual boundary writes and the Gamma-ratio boundary path; the remaining release gap is C++ execution of both ending workflows. |
 
+For the `automatic_phasespace` row, the durable D246 blocker record introduced
+at `a8f0772` remains the release-facing reference:
+[`m7-b63n-d246-mathematica-attempt.md`](../milestones/m7-b63n-d246-mathematica-attempt.md).
+It records a fresh Mathematica/AMFlow invocation that succeeded, but did not
+produce labeled D2/D4/D6 weighted-residue coefficients. The D246 sidecar
+therefore remains skeleton-only and must not be treated as a qualified
+high-precision AMFlow packet or a C++ `b63n` live runtime reproduction.
+
 For the `linear_propagator` row, the lane 4 post-M7 guard records the
 non-promotion boundary for existing selected `b64ag` evidence and the fixture
 shape expected of a future fail-closed recapture/runtime-packet guard:

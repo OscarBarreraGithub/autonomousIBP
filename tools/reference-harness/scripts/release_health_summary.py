@@ -48,6 +48,18 @@ KNOWN_EXAMPLE_STATUSES = frozenset(
         "upstream-only-no-data",
     )
 )
+EXPECTED_AMFLOW_EXAMPLES: tuple[str, ...] = (
+    "automatic_loop",
+    "automatic_phasespace",
+    "automatic_vs_manual",
+    "complex_kinematics",
+    "differential_equation_solver",
+    "feynman_prescription",
+    "linear_propagator",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending",
+)
 ZERO_EVIDENCE_STATUSES = frozenset(("not-reproduced", "upstream-only-no-data"))
 EXAMPLE_TOKEN_PATTERN = re.compile(r"`([^`]+)`")
 
@@ -425,6 +437,18 @@ def summarize_example_coverage_from_paths(
     inventory = parse_upstream_inventory(inventory_markdown)
     not_full_examples = parse_not_full_examples(inventory_markdown)
     known_gap_examples = parse_known_gap_examples(known_gaps_markdown)
+    expected_examples = set(EXPECTED_AMFLOW_EXAMPLES)
+    inventory_examples = set(inventory)
+    missing_examples = sorted(expected_examples - inventory_examples)
+    extra_examples = sorted(inventory_examples - expected_examples)
+    expect(
+        not missing_examples,
+        "upstream inventory is missing frozen AMFlow example(s): " + ", ".join(missing_examples),
+    )
+    expect(
+        not extra_examples,
+        "upstream inventory contains unexpected AMFlow example(s): " + ", ".join(extra_examples),
+    )
     expect(
         set(not_full_examples) == set(known_gap_examples),
         "not-full example set must match docs/release/known-gaps.md table",
@@ -437,6 +461,19 @@ def summarize_example_coverage_from_paths(
     expect(
         not missing_from_inventory,
         "not-full examples are missing from upstream inventory: " + ", ".join(missing_from_inventory),
+    )
+    inventory_not_full_examples = [
+        example
+        for example, status in inventory.items()
+        if status != "reproduced-fully"
+    ]
+    expect(
+        set(not_full_examples) == set(inventory_not_full_examples),
+        "not-full example set must match upstream inventory non-full statuses",
+    )
+    expect(
+        not_full_examples == inventory_not_full_examples,
+        "not-full example order must match upstream inventory non-full statuses",
     )
 
     status_counts = Counter(inventory.values())
@@ -752,6 +789,60 @@ def self_check(root: Path) -> None:
         )
         coverage_payload = (root / AMFLOW_EXAMPLE_COVERAGE).read_text(encoding="utf-8")
         known_gaps_payload = (root / RELEASE_KNOWN_GAPS).read_text(encoding="utf-8")
+        missing_inventory_lines = [
+            line
+            for line in coverage_payload.splitlines()
+            if not line.startswith("| `automatic_vs_manual` |")
+        ]
+        missing_inventory_payload = "\n".join(missing_inventory_lines)
+        if coverage_payload.endswith("\n"):
+            missing_inventory_payload += "\n"
+        expect(
+            missing_inventory_payload != coverage_payload,
+            "coverage self-check fixture must remove automatic_vs_manual row",
+        )
+        missing_inventory_path = Path(temp_dir) / "amflow-example-coverage-missing-row.md"
+        missing_inventory_path.write_text(missing_inventory_payload, encoding="utf-8")
+        expect_health_error(
+            "frozen upstream inventory membership check",
+            lambda: summarize_example_coverage_from_paths(
+                root,
+                missing_inventory_path.relative_to(root),
+                RELEASE_KNOWN_GAPS,
+            ),
+            "upstream inventory is missing frozen AMFlow example",
+        )
+        extra_inventory_lines = coverage_payload.splitlines()
+        extra_row_index = next(
+            (
+                index
+                for index, line in enumerate(extra_inventory_lines)
+                if line.startswith("| `user_defined_ending` |")
+            ),
+            None,
+        )
+        expect(
+            extra_row_index is not None,
+            "coverage self-check fixture must contain user_defined_ending row",
+        )
+        extra_inventory_lines.insert(
+            extra_row_index + 1,
+            "| `synthetic_extra_example` | `examples/synthetic_extra_example/run.wl` | Synthetic extra row. | `reproduced-partial` |",
+        )
+        extra_inventory_payload = "\n".join(extra_inventory_lines)
+        if coverage_payload.endswith("\n"):
+            extra_inventory_payload += "\n"
+        extra_inventory_path = Path(temp_dir) / "amflow-example-coverage-extra-row.md"
+        extra_inventory_path.write_text(extra_inventory_payload, encoding="utf-8")
+        expect_health_error(
+            "unexpected upstream inventory membership check",
+            lambda: summarize_example_coverage_from_paths(
+                root,
+                extra_inventory_path.relative_to(root),
+                RELEASE_KNOWN_GAPS,
+            ),
+            "upstream inventory contains unexpected AMFlow example",
+        )
         missing_gap_lines = [
             line
             for line in known_gaps_payload.splitlines()
@@ -813,6 +904,25 @@ def self_check(root: Path) -> None:
                 reordered_gap_path.relative_to(root),
             ),
             "not-full example order must match docs/release/known-gaps.md table",
+        )
+        overclaimed_status_payload = coverage_payload.replace(
+            "| `automatic_phasespace` | `examples/automatic_phasespace/run.wl` | `b63n`: M6 lane143/lane146 selected Cutkosky endpoint evidence, 19/19 coefficients in lane146; M5 retained solution-sample comparison, 11/11 coefficients. | `reproduced-partial` |",
+            "| `automatic_phasespace` | `examples/automatic_phasespace/run.wl` | `b63n`: M6 lane143/lane146 selected Cutkosky endpoint evidence, 19/19 coefficients in lane146; M5 retained solution-sample comparison, 11/11 coefficients. | `reproduced-fully` |",
+        )
+        expect(
+            overclaimed_status_payload != coverage_payload,
+            "coverage self-check fixture must overclaim automatic_phasespace status",
+        )
+        overclaimed_status_path = Path(temp_dir) / "amflow-example-coverage-overclaimed-status.md"
+        overclaimed_status_path.write_text(overclaimed_status_payload, encoding="utf-8")
+        expect_health_error(
+            "not-full status coherence check",
+            lambda: summarize_example_coverage_from_paths(
+                root,
+                overclaimed_status_path.relative_to(root),
+                RELEASE_KNOWN_GAPS,
+            ),
+            "not-full example set must match upstream inventory non-full statuses",
         )
         unknown_status_payload = coverage_payload.replace(
             "| `automatic_loop` | `examples/automatic_loop/run.wl` | Core solve-series evidence: M5 lane39/lane45 `automatic_loop.eps8`, 126/126 coefficients, min 41 digits; phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. | `reproduced-fully` |",

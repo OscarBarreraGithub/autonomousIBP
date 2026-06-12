@@ -134,8 +134,9 @@ qualification evidence.
 
 The health summary's AMFlow example coverage block is an inventory guard. It
 keeps the detailed coverage doc and release known-gaps table aligned in both
-content and not-full-row order, but it does not close the listed runtime lanes
-or change the accepted M7 readiness scope.
+content and not-full-row order, verifies the frozen ten-example AMFlow inventory,
+and rejects status/gap mismatches, but it does not close the listed runtime
+lanes or change the accepted M7 readiness scope.
 
 ## Release Markdown
 

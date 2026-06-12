@@ -253,7 +253,7 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
     )
     require_exact(
         publication.get("minimum_digit_agreement_observed"),
-        2,
+        11,
         f"{label}.publication_gate.minimum_digit_agreement_observed",
     )
     require_exact(

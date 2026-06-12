@@ -92,7 +92,7 @@ B61N_PUBLICATION_BLOCKED_COMPARATOR = (
     "b61n-publication-amflow-cross-comparator.blocked.json"
 )
 B61N_PUBLICATION_BLOCKED_COMPARATOR_SHA256 = (
-    "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3"
+    "518f1ebb2011dad921fb8bdd8d5f9babc88a79b5875135d49181f175a143eae6"
 )
 EXPECTED_PRECISION_TARGETS: dict[tuple[str, int], dict[str, int]] = {
     ("box[1,0,1,1]", 0): {
@@ -2125,7 +2125,7 @@ def synthetic_sidecar() -> dict[str, Any]:
             "required_before_coefficient_publication": True,
             "comparison_kind": "cpp-vs-amflow",
             "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
-            "minimum_digit_agreement_observed": 2,
+            "minimum_digit_agreement_observed": 11,
             "comparison_summary": B61N_PUBLICATION_BLOCKED_COMPARATOR,
             "comparison_summary_sha256": B61N_PUBLICATION_BLOCKED_COMPARATOR_SHA256,
             "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,

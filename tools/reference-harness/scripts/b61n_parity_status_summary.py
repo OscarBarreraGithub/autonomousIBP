@@ -416,8 +416,8 @@ def summarize_payloads(
         "publication gate must retain the 50-digit AMFlow requirement",
     )
     expect(
-        require_int(publication, "amflow_cross_comparator_minimum_digit_agreement_observed") == 2,
-        "publication gate must keep the current 2-digit observed blocker visible",
+        require_int(publication, "amflow_cross_comparator_minimum_digit_agreement_observed") == 11,
+        "publication gate must keep the current 11-digit observed blocker visible",
     )
     expect(
         require_bool(publication, "m6_qualifier_hook_prepositioned"),
@@ -644,7 +644,7 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
         "amflow_cross_comparator_blocked_publication_variant_count": 5,
         "variant_count": 5,
         "amflow_cross_comparator_minimum_digit_agreement_required": 50,
-        "amflow_cross_comparator_minimum_digit_agreement_observed": 2,
+        "amflow_cross_comparator_minimum_digit_agreement_observed": 11,
         "m6_qualifier_hook_prepositioned": True,
         "m6_qualifier_hook_currently_promoted": False,
         "m7_parity_single_row_hook_prepositioned": True,

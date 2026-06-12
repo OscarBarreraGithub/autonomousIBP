@@ -41,7 +41,7 @@
     "m6_qualifier_hook_currently_promoted": false,
     "m6_qualifier_hook_prepositioned": true,
     "m7_parity_single_row_hook_prepositioned": true,
-    "minimum_digit_agreement_observed": 2,
+    "minimum_digit_agreement_observed": 11,
     "minimum_digit_agreement_required": 50,
     "variant_count": 5
   },

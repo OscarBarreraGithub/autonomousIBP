@@ -3,7 +3,7 @@
   "benchmark_id": "complex_kinematics",
   "compared_coefficient_count": 14,
   "comparison": "cpp-vs-amflow",
-  "cpp_result": "/tmp/autoibp_orch/exec/lane1_next8/complex_kinematics.two-constant-long-timeout.eps0.cpp-result.json",
+  "cpp_result": "tools/reference-harness/specs/m6/lane1-next8/complex_kinematics.two-constant-long-timeout.eps0.cpp-result.json",
   "default_family_suffix_normalization": "_amflow -> stripped",
   "failures": [
     "box[1,0,1,1] eps^0 has real/imag agreement 2/2, below tolerance 50",

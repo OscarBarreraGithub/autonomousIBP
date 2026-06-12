@@ -53260,7 +53260,7 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
                  "b61n publication qualifier should block current publication without a passing "
                  "AMFlow comparator");
   ExpectContains(result.stdout_json,
-                 "\"amflow_cross_comparator_minimum_digit_agreement_observed\": 2",
+                 "\"amflow_cross_comparator_minimum_digit_agreement_observed\": 11",
                  "b61n publication qualifier should record the current systematic comparator "
                  "mismatch");
   ExpectContains(result.stdout_json,
@@ -53468,7 +53468,7 @@ void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
                  "\"amflow_cross_comparator_blocked_publication_variant_count\": 5",
                  "b61n publication qualifier should block all selected endpoint variants");
   ExpectContains(result.stdout_json,
-                 "\"amflow_cross_comparator_minimum_digit_agreement_observed\": 2",
+                 "\"amflow_cross_comparator_minimum_digit_agreement_observed\": 11",
                  "b61n publication qualifier should expose the current AMFlow mismatch");
   ExpectContains(result.stdout_json,
                  "\"m6_optional_capture_packet\": \"b61n-complex-eta-zero-single-row\"",

@@ -50,7 +50,9 @@
     "phase0_template_updated_to_reference_captured": false,
     "b61n_removed_from_blocked_runtime_lanes": false,
     "qualify_milestone_m6_probe": {
-      "summary_path": "/tmp/autoibp_orch/exec/lane124_b61n/m6-qualification.json",
+      "summary_path": null,
+      "summary_path_retained": false,
+      "summary_path_note": "Historical lane124 qualification probe output was ephemeral and is not a retained sidecar input.",
       "current_state": "blocked-on-phase0-packet-set",
       "phase0_packet_set_qualified": false,
       "phase0_pending_runtime_lanes_closed": false,

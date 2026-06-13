@@ -59,6 +59,17 @@ non-dependency environment uses.
 | --- | --- | --- |
 | [`verify_env_var_registry.py`](../../tools/reference-harness/scripts/verify_env_var_registry.py) | Verify tracked CMake, Python, and C++ sources against the committed env-var registry, rejecting undocumented literal env-var reads and dynamic env-var reads. | `env-var-registry` and `env-var-registry-self-check`. |
 
+## Fixture Tree Immutability Gate
+
+This gate snapshots protected test/reference fixture trees before CTest runs and
+fails after the run if tests modified, deleted, or created files under those
+trees. It is a determinism guard only; tests should write generated outputs to
+build or temporary directories instead of fixture roots.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_fixture_tree_immutability.py`](../../tools/reference-harness/scripts/verify_fixture_tree_immutability.py) | Record and verify SHA-256 fixture-tree snapshots for `tests/`, `specs/`, `tools/reference-harness/specs/`, `tools/reference-harness/templates/`, and `references/snapshots/`, with synthetic drift self-checks for changed, added, and removed entries. | `fixture-tree-immutability-setup`, `fixture-tree-immutability`, and `fixture-tree-immutability-self-check`. |
+
 ## Coverage Baseline Gate
 
 This gate records the current coverage posture for repo-local C++ sources and

@@ -81,6 +81,18 @@
       "reason": "Release signoff must keep the environment-variable registry verifier's scanner and missing-registry-entry fixtures live."
     },
     {
+      "name": "fixture-tree-immutability-setup",
+      "reason": "Release signoff must snapshot protected fixture-tree state before fixture-consuming CTest gates run."
+    },
+    {
+      "name": "fixture-tree-immutability",
+      "reason": "Release signoff must fail if CTest gates modify, delete, or create files under protected fixture trees."
+    },
+    {
+      "name": "fixture-tree-immutability-self-check",
+      "reason": "Release signoff must keep fixture-tree immutability drift detection covered for modified, added, and removed entries."
+    },
+    {
       "name": "b64ag-phase0-packet-field-drift-gate",
       "reason": "Release signoff consumes accepted M6 readiness evidence, so b64ag phase-0 packet fields and per-coefficient witnesses must remain fail-closed."
     },

@@ -1253,6 +1253,67 @@ if(BUILD_TESTING)
   set_tests_properties(parity-status-sidecar-audit
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  get_property(AMFLOW_FIXTURE_TREE_GUARDED_TESTS DIRECTORY PROPERTY TESTS)
+  set(
+    AMFLOW_FIXTURE_TREE_STATE
+    ${CMAKE_CURRENT_BINARY_DIR}/fixture-tree-immutability/state.json)
+  add_test(
+    NAME fixture-tree-immutability-setup
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_fixture_tree_immutability.py
+      --snapshot
+      --root
+      ${CMAKE_CURRENT_SOURCE_DIR}
+      --state
+      ${AMFLOW_FIXTURE_TREE_STATE}
+      --path
+      tests
+      --path
+      specs
+      --path
+      tools/reference-harness/specs
+      --path
+      tools/reference-harness/templates
+      --path
+      references/snapshots)
+  set_tests_properties(fixture-tree-immutability-setup
+    PROPERTIES
+      FIXTURES_SETUP amflow-fixture-tree-immutability
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 180)
+  add_test(
+    NAME fixture-tree-immutability
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_fixture_tree_immutability.py
+      --verify
+      --root
+      ${CMAKE_CURRENT_SOURCE_DIR}
+      --state
+      ${AMFLOW_FIXTURE_TREE_STATE})
+  set_tests_properties(fixture-tree-immutability
+    PROPERTIES
+      DEPENDS fixture-tree-immutability-setup
+      FIXTURES_CLEANUP amflow-fixture-tree-immutability
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 180)
+  add_test(
+    NAME fixture-tree-immutability-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_fixture_tree_immutability.py
+      --self-check)
+  set_tests_properties(fixture-tree-immutability-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  if(AMFLOW_FIXTURE_TREE_GUARDED_TESTS)
+    set_property(
+      TEST ${AMFLOW_FIXTURE_TREE_GUARDED_TESTS}
+      APPEND
+      PROPERTY FIXTURES_REQUIRED amflow-fixture-tree-immutability)
+  endif()
   add_dependencies(
     amflow-tests
     amflow-cli

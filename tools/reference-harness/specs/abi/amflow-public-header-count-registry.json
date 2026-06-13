@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "scope": "amflow-public-header-count-registry",
+  "baseline_source_commit": "b00da151bc435337e2716db6e9514ecf41c90abb",
+  "baseline_generated_at_utc": "2026-06-13T14:11:05Z",
+  "headers": {
+    "root": "include",
+    "extensions": [
+      ".h",
+      ".hpp"
+    ]
+  },
+  "minimum_total_count": 44,
+  "minimum_counts_by_extension": {
+    ".h": 0,
+    ".hpp": 44
+  },
+  "regression_policy": "Fail if the total public header count or any configured extension count drops below its pinned minimum."
+}

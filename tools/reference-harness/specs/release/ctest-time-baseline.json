@@ -39,6 +39,14 @@
     {
       "name": "ctest-test-count-registry-self-check",
       "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
+    },
+    {
+      "name": "amflow-public-header-count-registry",
+      "reason": "This registry gate is enforced by a separate public-header count pin and is not part of the captured timing baseline."
+    },
+    {
+      "name": "amflow-public-header-count-registry-self-check",
+      "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
     }
   ],
   "test_count": 128,

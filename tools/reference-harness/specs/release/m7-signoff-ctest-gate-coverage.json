@@ -21,6 +21,14 @@
       "reason": "Release signoff must keep the public symbol-surface verifier's parser, filter, and drift-reporting fixtures live."
     },
     {
+      "name": "amflow-public-header-count-registry",
+      "reason": "Release signoff must fail if public include-surface header files under include/ drop below the pinned count registry."
+    },
+    {
+      "name": "amflow-public-header-count-registry-self-check",
+      "reason": "Release signoff must keep the public header-count verifier's extension filter and regression fixtures live."
+    },
+    {
       "name": "amflow-compile-warning-baseline",
       "reason": "Release signoff must fail if the repo-local src compile-warning surface grows beyond the pinned fallback diagnostic baseline."
     },

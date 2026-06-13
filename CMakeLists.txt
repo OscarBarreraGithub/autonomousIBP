@@ -225,6 +225,29 @@ if(BUILD_TESTING)
     TIMEOUT 180)
 
   add_test(
+    NAME amflow-public-header-count-registry
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_public_header_count.py
+      --verify
+      --registry
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/abi/amflow-public-header-count-registry.json
+  )
+  set_tests_properties(amflow-public-header-count-registry PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME amflow-public-header-count-registry-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_public_header_count.py
+      --self-check
+  )
+  set_tests_properties(amflow-public-header-count-registry-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME amflow-upstream-example-inventory
     COMMAND
       ${Python3_EXECUTABLE}

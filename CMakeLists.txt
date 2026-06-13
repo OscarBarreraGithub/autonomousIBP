@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.20)
 project(amflow_cpp VERSION 0.1.0 LANGUAGES CXX)
 
 include(cmake/Dependencies.cmake)
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 option(AMFLOW_ENABLE_COVERAGE_BASELINE_GATE "Enable the coverage baseline CTest gate." ON)
 
@@ -58,7 +60,8 @@ add_library(amflow
 
 target_include_directories(amflow
   PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_compile_features(amflow PUBLIC cxx_std_17)
@@ -73,6 +76,53 @@ add_executable(amflow-cli src/cli/main.cpp)
 target_link_libraries(amflow-cli PRIVATE amflow)
 target_compile_features(amflow-cli PRIVATE cxx_std_17)
 amflow_apply_default_warnings(amflow-cli)
+
+set(AMFLOW_INSTALL_CMAKEDIR
+  "${CMAKE_INSTALL_LIBDIR}/cmake/amflow"
+  CACHE STRING "CMake package configuration install directory")
+
+install(
+  TARGETS amflow amflow-cli
+  EXPORT amflowTargets
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(
+  DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.hpp")
+
+install(
+  EXPORT amflowTargets
+  NAMESPACE amflow::
+  DESTINATION ${AMFLOW_INSTALL_CMAKEDIR})
+
+configure_package_config_file(
+  cmake/amflowConfig.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/amflowConfig.cmake
+  INSTALL_DESTINATION ${AMFLOW_INSTALL_CMAKEDIR})
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/amflowConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
+
+install(
+  FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/amflowConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/amflowConfigVersion.cmake
+  DESTINATION ${AMFLOW_INSTALL_CMAKEDIR})
+
+configure_file(
+  cmake/cmake_uninstall.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+  @ONLY)
+
+add_custom_target(
+  uninstall
+  COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -90,6 +140,35 @@ if(BUILD_TESTING)
   set_tests_properties(amflow-tests PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     TIMEOUT 2400)
+
+  add_test(
+    NAME cmake-install-uninstall-roundtrip
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_cmake_install_roundtrip.py
+      --cmake
+      ${CMAKE_COMMAND}
+      --build-dir
+      ${CMAKE_CURRENT_BINARY_DIR}
+      --source-dir
+      ${CMAKE_CURRENT_SOURCE_DIR}
+      --install-root
+      ${CMAKE_CURRENT_BINARY_DIR}/install-roundtrip-gate
+      --bindir
+      ${CMAKE_INSTALL_BINDIR}
+      --libdir
+      ${CMAKE_INSTALL_LIBDIR}
+      --includedir
+      ${CMAKE_INSTALL_INCLUDEDIR}
+      --library-filename
+      $<TARGET_FILE_NAME:amflow>
+      --cli-filename
+      $<TARGET_FILE_NAME:amflow-cli>
+      --config
+      $<CONFIG>)
+  set_tests_properties(cmake-install-uninstall-roundtrip PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 300)
 
   add_test(
     NAME cmake-build-testing-off-configure

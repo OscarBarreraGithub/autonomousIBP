@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-autoIBP-TBD
+
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/amflowTargets.cmake")

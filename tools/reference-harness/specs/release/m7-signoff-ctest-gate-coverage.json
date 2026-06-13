@@ -117,6 +117,10 @@
       "reason": "Release signoff must prove downstream source builds can configure the runtime library with BUILD_TESTING disabled and no test-only dependencies."
     },
     {
+      "name": "cmake-install-uninstall-roundtrip",
+      "reason": "Release signoff must prove CMake install writes only the declared prefix inventory and that the uninstall target removes it completely."
+    },
+    {
       "name": "m5-golden-fingerprint-pins",
       "reason": "Release signoff consumes the accepted M5 packet, so its golden byte fingerprints remain required release evidence."
     },

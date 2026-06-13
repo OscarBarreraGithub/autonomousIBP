@@ -80,6 +80,16 @@ It does not add tests or claim improved coverage.
 | --- | --- | --- |
 | [`verify_coverage_baseline.py`](../../tools/reference-harness/scripts/verify_coverage_baseline.py) | Rebuild with GCC coverage flags, run `amflow-tests` plus CTest, collect a `gcov` line/function summary for scoped `src/` files, and compare it against the pinned baseline. If `gcov` is unavailable, verify the scoped coverage instrumentation counts instead. | `amflow-coverage-baseline` and `amflow-coverage-baseline-self-check`. |
 
+## CTest Execution-Time Baseline Gate
+
+This gate records per-test CTest wall-clock seconds and applies a 3x timeout
+window to each baselined test at configure time. It is a regression guard only;
+it does not create benchmark evidence or change numeric validation thresholds.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_ctest_time_baseline.py`](../../tools/reference-harness/scripts/verify_ctest_time_baseline.py) | Write or validate the release CTest timing registry, confirm all configured tests are baselined or explicitly excluded, and verify CMake applied each pinned 3x timeout window. | `ctest-execution-time-baseline` and `ctest-execution-time-baseline-self-check`. |
+
 ## Python Type Baseline Gate
 
 This gate records the current type-checking posture for repo-local Python tools

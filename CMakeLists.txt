@@ -7,6 +7,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(AMFLOW_ENABLE_COVERAGE_BASELINE_GATE "Enable the coverage baseline CTest gate." ON)
+option(AMFLOW_ENABLE_CTEST_TIME_BASELINE_GATE "Enable the CTest execution-time baseline gate." ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -1415,6 +1416,62 @@ if(BUILD_TESTING)
       APPEND
       PROPERTY FIXTURES_REQUIRED amflow-fixture-tree-immutability)
   endif()
+
+  if(AMFLOW_ENABLE_CTEST_TIME_BASELINE_GATE)
+    set(
+      AMFLOW_CTEST_TIME_BASELINE
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/release/ctest-time-baseline.json)
+    if(NOT EXISTS ${AMFLOW_CTEST_TIME_BASELINE})
+      message(FATAL_ERROR "missing CTest execution-time baseline: ${AMFLOW_CTEST_TIME_BASELINE}")
+    endif()
+    file(READ ${AMFLOW_CTEST_TIME_BASELINE} AMFLOW_CTEST_TIME_BASELINE_JSON)
+    string(JSON AMFLOW_CTEST_TIME_TOOL GET "${AMFLOW_CTEST_TIME_BASELINE_JSON}" tool)
+    if(NOT AMFLOW_CTEST_TIME_TOOL STREQUAL "ctest-execution-time-baseline")
+      message(FATAL_ERROR "CTest execution-time baseline has unexpected tool field")
+    endif()
+    string(JSON AMFLOW_CTEST_TIME_COUNT LENGTH "${AMFLOW_CTEST_TIME_BASELINE_JSON}" tests)
+    if(AMFLOW_CTEST_TIME_COUNT GREATER 0)
+      math(EXPR AMFLOW_CTEST_TIME_LAST_INDEX "${AMFLOW_CTEST_TIME_COUNT} - 1")
+      foreach(AMFLOW_CTEST_TIME_INDEX RANGE 0 ${AMFLOW_CTEST_TIME_LAST_INDEX})
+        string(
+          JSON AMFLOW_CTEST_TIME_TEST_NAME
+          GET "${AMFLOW_CTEST_TIME_BASELINE_JSON}" tests ${AMFLOW_CTEST_TIME_INDEX} name)
+        string(
+          JSON AMFLOW_CTEST_TIME_MAX_SECONDS
+          GET "${AMFLOW_CTEST_TIME_BASELINE_JSON}" tests ${AMFLOW_CTEST_TIME_INDEX} max_seconds)
+        if(TEST "${AMFLOW_CTEST_TIME_TEST_NAME}")
+          set_property(
+            TEST
+            "${AMFLOW_CTEST_TIME_TEST_NAME}"
+            PROPERTY TIMEOUT "${AMFLOW_CTEST_TIME_MAX_SECONDS}")
+        endif()
+      endforeach()
+    endif()
+
+    add_test(
+      NAME ctest-execution-time-baseline
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_ctest_time_baseline.py
+        --baseline
+        ${AMFLOW_CTEST_TIME_BASELINE}
+        --build-dir
+        ${CMAKE_CURRENT_BINARY_DIR}
+        --ctest
+        ${CMAKE_CTEST_COMMAND})
+    set_tests_properties(ctest-execution-time-baseline PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    add_test(
+      NAME ctest-execution-time-baseline-self-check
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_ctest_time_baseline.py
+        --self-check)
+    set_tests_properties(ctest-execution-time-baseline-self-check PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  endif()
+
   add_dependencies(
     amflow-tests
     amflow-cli

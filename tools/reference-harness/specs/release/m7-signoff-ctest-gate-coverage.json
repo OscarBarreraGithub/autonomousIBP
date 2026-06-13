@@ -229,6 +229,14 @@
       "reason": "Release signoff must keep this CTest coverage manifest validator's positive and negative fixtures live."
     },
     {
+      "name": "ctest-execution-time-baseline",
+      "reason": "Release signoff must fail if any configured CTest entry loses its pinned 3x execution-time timeout window."
+    },
+    {
+      "name": "ctest-execution-time-baseline-self-check",
+      "reason": "Release signoff must keep the CTest execution-time baseline verifier's schema and 3x-window fixtures live."
+    },
+    {
       "name": "parity-status-sidecar-audit",
       "reason": "Release signoff must verify b61n and b63n parity status sidecars remain internally coherent with accepted release scope."
     }

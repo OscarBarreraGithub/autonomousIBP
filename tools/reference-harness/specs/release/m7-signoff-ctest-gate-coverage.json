@@ -201,6 +201,14 @@
       "reason": "Release signoff must keep the release-doc metadata field validator's missing-field and unclassified-doc fixtures live."
     },
     {
+      "name": "m7-release-doc-file-counts",
+      "reason": "Release signoff must fail if docs/release markdown files are deleted from any pinned release-doc category."
+    },
+    {
+      "name": "m7-release-doc-file-counts-self-check",
+      "reason": "Release signoff must keep release-doc file-count regression fixtures live for deleted docs and overlapping categories."
+    },
+    {
       "name": "m7-release-evidence-tarball-size",
       "reason": "Release signoff must fail if the canonical M7 release evidence tarball grows or shrinks beyond the pinned compressed-size tolerance window."
     },

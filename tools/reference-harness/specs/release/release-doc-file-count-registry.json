@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "scope": "release-doc-file-count-registry",
+  "baseline_source_commit": "c6c7298977d096ea6fd315a5cac515619b775395",
+  "baseline_generated_at_utc": "2026-06-13T11:35:17Z",
+  "documents": {
+    "include_glob": "docs/release/*.md"
+  },
+  "categories": [
+    {
+      "id": "live-rerun-X",
+      "description": "AMFlow live rerun markdown notes named docs/release/amflow-live-rerun-*.md.",
+      "path_globs": [
+        "docs/release/amflow-live-rerun-*.md"
+      ],
+      "minimum_count": 9
+    },
+    {
+      "id": "audit",
+      "description": "Release markdown audit notes named with an audit marker.",
+      "path_globs": [
+        "docs/release/*audit*.md"
+      ],
+      "minimum_count": 0
+    },
+    {
+      "id": "known-gaps",
+      "description": "The release known-gaps ledger.",
+      "path_globs": [
+        "docs/release/known-gaps.md"
+      ],
+      "minimum_count": 1
+    },
+    {
+      "id": "tools",
+      "description": "The release tooling catalog.",
+      "path_globs": [
+        "docs/release/tools.md"
+      ],
+      "minimum_count": 1
+    },
+    {
+      "id": "others",
+      "description": "Release markdown files that do not match another pinned category.",
+      "catch_all": true,
+      "minimum_count": 3
+    }
+  ],
+  "total_minimum_count": 14,
+  "regression_policy": "Fail if the current docs/release/*.md total or any category count drops below the pinned minimum."
+}

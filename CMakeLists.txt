@@ -895,6 +895,26 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-doc-file-counts
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_release_doc_file_counts.py
+      --verify
+  )
+  set_tests_properties(m7-release-doc-file-counts PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-release-doc-file-counts-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_release_doc_file_counts.py
+      --self-check
+  )
+  set_tests_properties(m7-release-doc-file-counts-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-tools-catalog-validation
     COMMAND
       ${Python3_EXECUTABLE}

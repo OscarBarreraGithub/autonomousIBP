@@ -65,6 +65,14 @@
       "reason": "Release signoff must keep the source license-header verifier's missing-header and SPDX-header classification fixtures live."
     },
     {
+      "name": "env-var-registry",
+      "reason": "Release signoff must fail if CMake, Python, or C++ build/runtime environment-variable reads are added without required/default behavior documented in the registry."
+    },
+    {
+      "name": "env-var-registry-self-check",
+      "reason": "Release signoff must keep the environment-variable registry verifier's scanner and missing-registry-entry fixtures live."
+    },
+    {
       "name": "b64ag-phase0-packet-field-drift-gate",
       "reason": "Release signoff consumes accepted M6 readiness evidence, so b64ag phase-0 packet fields and per-coefficient witnesses must remain fail-closed."
     },

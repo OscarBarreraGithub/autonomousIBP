@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "scope": "build-runtime-env-vars",
+  "requested_head": "c06636a175f74cc8dc8811f7d6765828940276cb",
+  "audit_surfaces": [
+    {
+      "name": "CMake configure-time",
+      "reader_apis": [
+        "$ENV{VAR}",
+        "DEFINED ENV{VAR}"
+      ],
+      "registered_variables": []
+    },
+    {
+      "name": "Python tools",
+      "reader_apis": [
+        "os.environ.get(\"VAR\")",
+        "os.environ[\"VAR\"]",
+        "os.getenv(\"VAR\")",
+        "\"VAR\" in os.environ"
+      ],
+      "registered_variables": [
+        "B61N_SINGULAR_RUNTIME_TEST_BINARY",
+        "B63N_WEIGHTED_RESIDUE_TEST_BINARY"
+      ]
+    },
+    {
+      "name": "C++ runtime",
+      "reader_apis": [
+        "getenv(\"VAR\")",
+        "std::getenv(\"VAR\")",
+        "secure_getenv(\"VAR\")"
+      ],
+      "registered_variables": []
+    }
+  ],
+  "environment_variables": [
+    {
+      "name": "B61N_SINGULAR_RUNTIME_TEST_BINARY",
+      "required": false,
+      "default": "unset",
+      "description": "Optional path override for the singular-runtime-lane-tests executable used by the b61n publication audit-trail verifier.",
+      "default_behavior": "When unset, tools/reference-harness/scripts/verify_b61n_publication_audit_trail.py first honors --test-binary and then searches common build output paths such as build/singular-runtime-lane-tests and cmake-build-debug/singular-runtime-lane-tests.",
+      "failure_mode": "If no --test-binary, environment override, or common-path candidate exists, the verifier raises a checked-path RuntimeError. The CTest entry passes --test-binary explicitly, so normal builds do not require this variable.",
+      "readers": [
+        {
+          "path": "tools/reference-harness/scripts/verify_b61n_publication_audit_trail.py",
+          "api": "os.environ.get"
+        }
+      ]
+    },
+    {
+      "name": "B63N_WEIGHTED_RESIDUE_TEST_BINARY",
+      "required": false,
+      "default": "unset",
+      "description": "Optional path override for the cutkosky-weighted-residue-tests executable used by b63n weighted-residue audit tools.",
+      "default_behavior": "When unset, tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py and tools/reference-harness/scripts/regenerate_b63n_weighted_residue_fingerprints.py first honor --test-binary and then search common build output paths such as build/cutkosky-weighted-residue-tests and cmake-build-debug/cutkosky-weighted-residue-tests.",
+      "failure_mode": "If no --test-binary, environment override, or common-path candidate exists, the verifier/regenerator raises a checked-path RuntimeError. The CTest entries pass --test-binary explicitly, so normal builds do not require this variable.",
+      "readers": [
+        {
+          "path": "tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py",
+          "api": "os.environ.get"
+        },
+        {
+          "path": "tools/reference-harness/scripts/regenerate_b63n_weighted_residue_fingerprints.py",
+          "api": "os.environ.get"
+        }
+      ]
+    }
+  ],
+  "non_dependency_environment_uses": [
+    {
+      "path": "tools/reference-harness/scripts/verify_coverage_baseline.py",
+      "api": "dict(os.environ)",
+      "description": "Copies the current process environment into a nested CTest subprocess and sets AMFLOW_COVERAGE_BASELINE_NESTED there. No repo code reads AMFLOW_COVERAGE_BASELINE_NESTED at this commit, so it is recorded as a subprocess environment write/pass-through rather than a named build/runtime dependency."
+    },
+    {
+      "path": "src/kira/kira_backend.cpp",
+      "api": "process environ traversal",
+      "description": "Copies the current process environment into the environment passed to the external Kira subprocess, then applies explicit PreparedCommand.environment_overrides such as FERMATPATH. This is a pass-through of the caller environment, not a named repo configuration dependency."
+    }
+  ],
+  "audit_result": {
+    "required_variables": [],
+    "optional_variables": [
+      "B61N_SINGULAR_RUNTIME_TEST_BINARY",
+      "B63N_WEIGHTED_RESIDUE_TEST_BINARY"
+    ],
+    "pass_through_environment_reads": [
+      "tools/reference-harness/scripts/verify_coverage_baseline.py: dict(os.environ)",
+      "src/kira/kira_backend.cpp: process environ traversal"
+    ],
+    "silent_required_without_default": []
+  }
+}

@@ -47,6 +47,18 @@ project license or stamp headers onto existing files.
 | --- | --- | --- |
 | [`verify_source_license_headers.py`](../../tools/reference-harness/scripts/verify_source_license_headers.py) | Verify scoped C++, Python tool, and CMake files either carry expected license/copyright header metadata or remain in the pinned missing-header baseline, while reporting the missing root license file as a known gap. | `source-license-header-gate` and `source-license-header-gate-self-check`. |
 
+## Environment Variable Registry Gate
+
+This gate documents repo-local build/runtime environment-variable reads and
+fails if new CMake, Python, or C++ named env-var reads are added without
+required/default behavior in the registry. Whole-environment pass-throughs,
+such as subprocess environment forwarding, must also be acknowledged as
+non-dependency environment uses.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_env_var_registry.py`](../../tools/reference-harness/scripts/verify_env_var_registry.py) | Verify tracked CMake, Python, and C++ sources against the committed env-var registry, rejecting undocumented literal env-var reads and dynamic env-var reads. | `env-var-registry` and `env-var-registry-self-check`. |
+
 ## Coverage Baseline Gate
 
 This gate records the current coverage posture for repo-local C++ sources and

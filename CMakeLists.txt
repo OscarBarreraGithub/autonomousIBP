@@ -187,6 +187,29 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME env-var-registry
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_env_var_registry.py
+      --verify
+      --registry
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/env-var-registry.json
+  )
+  set_tests_properties(env-var-registry PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME env-var-registry-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_env_var_registry.py
+      --self-check
+  )
+  set_tests_properties(env-var-registry-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME include-order-baseline
     COMMAND
       ${Python3_EXECUTABLE}

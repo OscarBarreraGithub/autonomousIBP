@@ -30,16 +30,16 @@ The remaining eight upstream examples have retained, selected-coefficient, or
 scoped comparison evidence, but they are not full C++ runtime reproductions of
 the upstream AMFlow scripts:
 
-| AMFlow example | Remaining gap |
-| --- | --- |
-| `automatic_phasespace` | Needs full `b63n` live Cutkosky phase-space boundary reconstruction, weighted residue evaluation, endpoint propagation, and a qualified high-precision AMFlow packet. |
-| `complex_kinematics` | Live AMFlow retained-golden coverage now exists for the seven-rule complex-mass box `sol` output; the remaining gap is full `b61n` live complex eta-contour propagation, eta=0 endpoint extraction, and packet qualification without consuming final AMFlow solution samples. |
-| `differential_equation_solver` | Live AMFlow retained-golden coverage now exists for `run.wl` `redtable`/`diffeq`/`sol1`/`sol2` plus the upstream DESolver `diffeq.wl` continuation/asymptotic-expansion workflow; the remaining gap is C++ DESolver-runtime support for that workflow. |
-| `feynman_prescription` | Live AMFlow retained-golden coverage now exists for both opposite-prescription `sol1`/`sol2` branches and the saved-output conjugacy check; the remaining gap is prescription-aware `b63n` Cutkosky C++ runtime coverage and comparator output namespacing. |
-| `linear_propagator` | Live AMFlow retained-golden coverage now exists for the upstream lightlike gauge-link `sol` output; the remaining gap is full C++ `b64ag` gauge-link transport, finite-part extraction, target reduction over the accepted surface, and a high-precision AMFlow comparison packet. |
-| `spacetime_dimension` | Live AMFlow retained-golden coverage now exists for `D0 = 7/3`, `D0 = 1/3`, and the dimensional-recurrence check; the remaining gap is full C++ runtime support for the retained nondefault-`D0` workflow. |
-| `user_defined_amfmode` | Needs end-to-end execution of the user-defined `AMFMode` hook through eta=0 endpoint extraction on the full requested target surface. |
-| `user_defined_ending` | Live AMFlow rerun coverage now exists for both `final_Tradition` and `final_usr`, including manual boundary writes and the Gamma-ratio boundary path; the remaining release gap is C++ execution of both ending workflows. |
+| AMFlow example | Status | Remaining gap | Blocker/reference |
+| --- | --- | --- | --- |
+| `automatic_phasespace` | `blocked-reference-packet` | Needs full `b63n` live Cutkosky phase-space boundary reconstruction, weighted residue evaluation, endpoint propagation, and a qualified high-precision AMFlow packet. | [D246 blocker record](../milestones/m7-b63n-d246-mathematica-attempt.md) |
+| `complex_kinematics` | `live-amflow-only` | Live AMFlow retained-golden coverage now exists for the seven-rule complex-mass box `sol` output; the remaining gap is full `b61n` live complex eta-contour propagation, eta=0 endpoint extraction, and packet qualification without consuming final AMFlow solution samples. | [live rerun note](amflow-live-rerun-complex_kinematics.md) |
+| `differential_equation_solver` | `live-amflow-only` | Live AMFlow retained-golden coverage now exists for `run.wl` `redtable`/`diffeq`/`sol1`/`sol2` plus the upstream DESolver `diffeq.wl` continuation/asymptotic-expansion workflow; the remaining gap is C++ DESolver-runtime support for that workflow. | [live rerun note](amflow-live-rerun-differential_equation_solver.md) |
+| `feynman_prescription` | `live-amflow-only` | Live AMFlow retained-golden coverage now exists for both opposite-prescription `sol1`/`sol2` branches and the saved-output conjugacy check; the remaining gap is prescription-aware `b63n` Cutkosky C++ runtime coverage and comparator output namespacing. | [live rerun note](amflow-live-rerun-feynman_prescription.md) |
+| `linear_propagator` | `live-amflow-only` | Live AMFlow retained-golden coverage now exists for the upstream lightlike gauge-link `sol` output; the remaining gap is full C++ `b64ag` gauge-link transport, finite-part extraction, target reduction over the accepted surface, and a high-precision AMFlow comparison packet. | [live rerun note](amflow-live-rerun-linear_propagator.md) |
+| `spacetime_dimension` | `live-amflow-only` | Live AMFlow retained-golden coverage now exists for `D0 = 7/3`, `D0 = 1/3`, and the dimensional-recurrence check; the remaining gap is full C++ runtime support for the retained nondefault-`D0` workflow. | [live rerun note](amflow-live-rerun-spacetime_dimension.md) |
+| `user_defined_amfmode` | `scoped-live-only` | Needs end-to-end execution of the user-defined `AMFMode` hook through eta=0 endpoint extraction on the full requested target surface. | [live rerun note](amflow-live-rerun-user_defined_amfmode.md) |
+| `user_defined_ending` | `live-amflow-only` | Live AMFlow rerun coverage now exists for both `final_Tradition` and `final_usr`, including manual boundary writes and the Gamma-ratio boundary path; the remaining release gap is C++ execution of both ending workflows. | [live rerun note](amflow-live-rerun-user_defined_ending.md) |
 
 For the `automatic_phasespace` row, the durable D246 blocker record introduced
 at `a8f0772` remains the release-facing reference:

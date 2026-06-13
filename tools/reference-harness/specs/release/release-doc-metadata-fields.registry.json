@@ -1,0 +1,394 @@
+{
+  "schema_version": 1,
+  "scope": "release-doc-metadata-fields",
+  "documents": {
+    "include_globs": [
+      "docs/release/*.md"
+    ]
+  },
+  "classes": [
+    {
+      "id": "amflow-live-rerun",
+      "description": "AMFlow live-rerun evidence notes must expose source paths, retained-evidence references, successful exit-code metadata, digest SHA lines, and the release-facing status.",
+      "path_globs": [
+        "docs/release/amflow-live-rerun-*.md"
+      ],
+      "required_fields": [
+        {
+          "id": "date",
+          "description": "Live-rerun notes must carry a release-note date.",
+          "pattern": "^Date:\\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\\s*$",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "example-marker",
+          "description": "The example id is the stable join key for coverage, freshness, and inventory gates.",
+          "pattern": "^- Example:\\s*`[^`]+`\\s*$",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "upstream-source",
+          "description": "The upstream Mathematica source script field must be visible.",
+          "pattern": "^- Upstream Mathematica scripts?:",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "live-scratch-source",
+          "description": "The live scratch root or script path field must identify the rerun workspace.",
+          "pattern": "^- Live scratch (?:root|script path):",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "retained-evidence-source",
+          "description": "The retained golden, manifest, summary, or state-bundle source field must be explicit.",
+          "pattern": "^- Retained .+:",
+          "min_count": 1
+        },
+        {
+          "id": "mathematica-version",
+          "description": "The Mathematica version field is required for live AMFlow reruns.",
+          "pattern": "^- Mathematica:",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "amflow-version",
+          "description": "The AMFlow version field is required for live AMFlow reruns.",
+          "pattern": "^- AMFlow:",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "kira-version",
+          "description": "The Kira version/executable field is required for reducer-backed reruns.",
+          "pattern": "^- Kira:",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "fermat-version",
+          "description": "The Fermat version/executable field is required for reducer-backed reruns.",
+          "pattern": "^- Fermat:",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "live-exit-code",
+          "description": "Live-rerun metadata must record successful live-exit: 0.",
+          "pattern": "^live-exit:\\s*0\\s*$",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "sha256-digest-lines",
+          "description": "Live-rerun notes must publish SHA-256 digest fields for outputs/logs.",
+          "pattern": "^-\\s+.+?:\\s*`[0-9a-f]{64}`",
+          "min_count": 3
+        },
+        {
+          "id": "stdout-sha256",
+          "description": "Live stdout must have a SHA-256 digest field.",
+          "pattern": "^- Live stdout:\\s*`[0-9a-f]{64}`",
+          "min_count": 1
+        },
+        {
+          "id": "stderr-sha256",
+          "description": "Live stderr must have a SHA-256 digest field.",
+          "pattern": "^- Live stderr:\\s*`[0-9a-f]{64}`",
+          "min_count": 1
+        },
+        {
+          "id": "status-value",
+          "description": "The live-rerun status field must be a backticked release status under ## Status.",
+          "pattern": "^`(?:reproduced-fully-live|reproduced-matches-golden|reproduced-matches-golden-at-requested-precision)`\\s*$",
+          "min_count": 1,
+          "max_count": 1
+        }
+      ]
+    },
+    {
+      "id": "amflow-example-coverage-inventory",
+      "description": "The AMFlow example coverage inventory must expose its date, audited upstream source, deterministic registry, and per-example status table.",
+      "path_globs": [
+        "docs/release/amflow-example-coverage.md"
+      ],
+      "required_fields": [
+        {
+          "id": "date",
+          "description": "The inventory must carry a release-note date.",
+          "pattern": "^Date:\\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\\s*$",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "audited-upstream-source",
+          "description": "The audited upstream checkout source must be named.",
+          "pattern": "audited cluster\\s+source is the retained clean upstream Git checkout",
+          "min_count": 1
+        },
+        {
+          "id": "upstream-commit-sha",
+          "description": "The pinned upstream AMFlow commit must be visible.",
+          "pattern": "`[0-9a-f]{40}`",
+          "min_count": 1
+        },
+        {
+          "id": "inventory-registry-link",
+          "description": "The deterministic upstream example registry must be linked.",
+          "pattern": "amflow-upstream-example-inventory\\.registry\\.json",
+          "min_count": 1
+        }
+      ],
+      "required_tables": [
+        {
+          "id": "upstream-inventory",
+          "section": "Upstream Inventory",
+          "columns": [
+            "Upstream example",
+            "Mathematica entry file(s)",
+            "C++ lane / evidence in this repo",
+            "Status"
+          ],
+          "min_rows": 10,
+          "row_requirements": [
+            {
+              "column": "Upstream example",
+              "description": "backticked AMFlow example id",
+              "pattern": "^`[^`]+`$"
+            },
+            {
+              "column": "Mathematica entry file(s)",
+              "description": "entry-file metadata",
+              "pattern": "`examples/[^`]+`"
+            },
+            {
+              "column": "Status",
+              "description": "backticked inventory status",
+              "pattern": "^`[a-z0-9_-]+`$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "release-known-gaps",
+      "description": "Known-gap entries must carry explicit per-row status and blocker/reference metadata, separate from prose.",
+      "path_globs": [
+        "docs/release/known-gaps.md"
+      ],
+      "required_fields": [
+        {
+          "id": "date",
+          "description": "The known-gaps note must carry a release-note date.",
+          "pattern": "^Date:\\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\\s*$",
+          "min_count": 1,
+          "max_count": 1
+        },
+        {
+          "id": "accepted-readiness-proof-link",
+          "description": "Known gaps must point readers back to the accepted readiness proof.",
+          "pattern": "\\[.*m7-closure-evidence\\.md.*\\]\\(m7-closure-evidence\\.md\\)",
+          "min_count": 1
+        }
+      ],
+      "required_tables": [
+        {
+          "id": "not-fully-reproduced-rows",
+          "section": "Not Fully Reproduced Rows",
+          "columns": [
+            "AMFlow example",
+            "Status",
+            "Remaining gap",
+            "Blocker/reference"
+          ],
+          "min_rows": 8,
+          "row_requirements": [
+            {
+              "column": "AMFlow example",
+              "description": "backticked AMFlow example id",
+              "pattern": "^`[^`]+`$"
+            },
+            {
+              "column": "Status",
+              "description": "backticked gap status",
+              "pattern": "^`[a-z0-9_-]+`$"
+            },
+            {
+              "column": "Remaining gap",
+              "description": "nonempty remaining gap narrative",
+              "pattern": "\\S"
+            },
+            {
+              "column": "Blocker/reference",
+              "description": "markdown link to a blocker or evidence reference",
+              "pattern": "\\[[^\\]]+\\]\\([^)]+\\)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m7-closure-evidence",
+      "description": "The M7 closure evidence note must expose the accepted readiness output, ready/blocker fields, closure trail, and input provenance tables.",
+      "path_globs": [
+        "docs/release/m7-closure-evidence.md"
+      ],
+      "required_fields": [
+        {
+          "id": "closure-commit",
+          "description": "The retained release-closure commit must be visible.",
+          "pattern": "`[0-9a-f]{40}`",
+          "min_count": 1
+        },
+        {
+          "id": "final-readiness-output",
+          "description": "The final readiness output path must be visible.",
+          "pattern": "release-readiness\\.m5-accepted\\.full-output\\.json",
+          "min_count": 1
+        },
+        {
+          "id": "release-ready-field",
+          "description": "The accepted release_signoff_ready field must be named.",
+          "pattern": "`release_signoff_ready=true`",
+          "min_count": 1
+        },
+        {
+          "id": "release-blockers-field",
+          "description": "The accepted empty release_signoff_blockers field must be named.",
+          "pattern": "`release_signoff_blockers=\\[\\]`",
+          "min_count": 1
+        }
+      ],
+      "required_tables": [
+        {
+          "id": "closure-trail",
+          "section": "Closure Trail",
+          "columns": [
+            "Commit",
+            "Landing",
+            "Retained evidence",
+            "Closure role"
+          ],
+          "min_rows": 7,
+          "row_requirements": [
+            {
+              "column": "Commit",
+              "description": "backticked commit id",
+              "pattern": "^`[0-9a-f]{7,40}`$"
+            },
+            {
+              "column": "Retained evidence",
+              "description": "retained evidence link or source reference",
+              "pattern": "\\[[^\\]]+\\]\\([^)]+\\)|`[^`]+`"
+            }
+          ]
+        },
+        {
+          "id": "accepted-readiness-inputs",
+          "section": "Accepted Readiness Inputs",
+          "columns": [
+            "Readiness input",
+            "Sidecar or source",
+            "Evidence state"
+          ],
+          "min_rows": 12,
+          "row_requirements": [
+            {
+              "column": "Readiness input",
+              "description": "readiness input key",
+              "pattern": "\\S"
+            },
+            {
+              "column": "Sidecar or source",
+              "description": "sidecar/source link",
+              "pattern": "\\[[^\\]]+\\]\\([^)]+\\)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "release-readiness-runbook",
+      "description": "The release-readiness replay runbook must expose its canonical output, expected ready/blocker fields, CTest gate names, and direct replay inputs.",
+      "path_globs": [
+        "docs/release/re-run-release-readiness.md"
+      ],
+      "required_fields": [
+        {
+          "id": "canonical-retained-output",
+          "description": "The canonical accepted readiness output path must be visible.",
+          "pattern": "release-readiness\\.m5-accepted\\.full-output\\.json",
+          "min_count": 1
+        },
+        {
+          "id": "ready-field",
+          "description": "The runbook must show the ready field.",
+          "pattern": "release_signoff_ready",
+          "min_count": 1
+        },
+        {
+          "id": "blockers-field",
+          "description": "The runbook must show the blockers field.",
+          "pattern": "release_signoff_blockers",
+          "min_count": 1
+        },
+        {
+          "id": "accepted-inputs-ctest",
+          "description": "The accepted-inputs CTest gate name must be visible.",
+          "pattern": "`m7-release-signoff-readiness-accepted-inputs`",
+          "min_count": 1
+        },
+        {
+          "id": "direct-replay-output-path",
+          "description": "The direct replay command must expose the summary output path.",
+          "pattern": "--summary-path",
+          "min_count": 1
+        }
+      ]
+    },
+    {
+      "id": "release-tooling-catalog",
+      "description": "The release tooling catalog must expose date metadata and the release markdown tool/CTest coverage table.",
+      "path_globs": [
+        "docs/release/tools.md"
+      ],
+      "required_fields": [
+        {
+          "id": "date",
+          "description": "The tooling catalog must carry a release-note date.",
+          "pattern": "^Date:\\s+[0-9]{4}-[0-9]{2}-[0-9]{2}\\s*$",
+          "min_count": 1,
+          "max_count": 1
+        }
+      ],
+      "required_tables": [
+        {
+          "id": "release-markdown-tools",
+          "section": "Release Markdown",
+          "columns": [
+            "Tool",
+            "Primary use",
+            "CI coverage"
+          ],
+          "min_rows": 11,
+          "row_requirements": [
+            {
+              "column": "Tool",
+              "description": "script link",
+              "pattern": "\\[`[^`]+\\.py`\\]\\([^)]+\\)"
+            },
+            {
+              "column": "CI coverage",
+              "description": "CTest coverage name",
+              "pattern": "`[^`]+`"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

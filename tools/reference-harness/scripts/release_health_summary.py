@@ -431,7 +431,7 @@ def parse_not_full_examples(markdown: str) -> list[str]:
 def parse_known_gap_examples(markdown: str) -> list[str]:
     rows = table_rows(
         section_lines(markdown, "Not Fully Reproduced Rows"),
-        ["AMFlow example", "Remaining gap"],
+        ["AMFlow example", "Status", "Remaining gap", "Blocker/reference"],
         "known gaps",
     )
     examples: list[str] = []

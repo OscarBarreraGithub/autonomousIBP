@@ -129,6 +129,14 @@
       "reason": "Release signoff must keep accepted-input readiness replay below the committed orchestration-overhead budget."
     },
     {
+      "name": "m7-release-doc-metadata-fields",
+      "reason": "Release signoff must fail if release-doc metadata fields such as live-rerun source/exit-code/SHA lines or known-gap status/blocker references drift."
+    },
+    {
+      "name": "m7-release-doc-metadata-fields-self-check",
+      "reason": "Release signoff must keep the release-doc metadata field validator's missing-field and unclassified-doc fixtures live."
+    },
+    {
       "name": "m7-release-tools-catalog-validation",
       "reason": "Release signoff must verify mode-capable release tools stay cataloged with their CTest coverage names."
     },

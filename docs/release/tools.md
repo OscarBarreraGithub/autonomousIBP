@@ -252,9 +252,10 @@ lanes or change the accepted M7 readiness scope.
 | [`validate_amflow_upstream_example_inventory.py`](../../tools/reference-harness/scripts/validate_amflow_upstream_example_inventory.py) | Validate that the committed stock upstream AMFlow example inventory and hashes in [`amflow-upstream-example-inventory.registry.json`](../../tools/reference-harness/specs/release/amflow-upstream-example-inventory.registry.json) still match the audited cluster Git checkout and same-path cross-check refs. | `amflow-upstream-example-inventory` and `amflow-upstream-example-inventory-self-check`. |
 | [`verify_compile_warning_baseline.py`](../../tools/reference-harness/scripts/verify_compile_warning_baseline.py) | Rebuild the repo-local `src` targets with the pinned fallback compile-warning surface and fail if warnings exceed the committed baseline. | `amflow-compile-warning-baseline`. |
 | [`validate_release_markdown.py`](../../tools/reference-harness/scripts/validate_release_markdown.py) | Validate release markdown links and fenced code blocks under `docs/release/` plus [`docs/release-signoff-checklist.md`](../release-signoff-checklist.md). | `m7-release-markdown-docs-validation` and `m7-release-markdown-docs-self-check`. |
+| [`validate_release_doc_metadata_fields.py`](../../tools/reference-harness/scripts/validate_release_doc_metadata_fields.py) | Validate field-level metadata requirements for each pinned `docs/release/*.md` class against [`release-doc-metadata-fields.registry.json`](../../tools/reference-harness/specs/release/release-doc-metadata-fields.registry.json). | `m7-release-doc-metadata-fields` and `m7-release-doc-metadata-fields-self-check`. |
 | [`validate_release_tools_catalog.py`](../../tools/reference-harness/scripts/validate_release_tools_catalog.py) | Validate this tooling catalog against CTest-wired mode-capable release scripts and reject stale tool links or missing CTest coverage names. | `m7-release-tools-catalog-validation` and `m7-release-tools-catalog-self-check`. |
-| [`validate_amflow_live_rerun_docs.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py) | Validate that the AMFlow coverage table, the seven live retained-golden rerun notes, and the blocked `automatic_phasespace` row remain synchronized. | `m7-amflow-live-rerun-doc-inventory` and `m7-amflow-live-rerun-doc-inventory-self-check`. |
-| [`validate_amflow_live_rerun_doc_structure.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_doc_structure.py) | Validate structured evidence blocks, digest references, exit lines, and external retained-evidence markers in the seven AMFlow live-rerun notes. | `m7-amflow-live-rerun-doc-structure` and `m7-amflow-live-rerun-doc-structure-self-check`. |
+| [`validate_amflow_live_rerun_docs.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py) | Validate that the AMFlow coverage table, the nine live retained-golden rerun notes, and the blocked `automatic_phasespace` row remain synchronized. | `m7-amflow-live-rerun-doc-inventory` and `m7-amflow-live-rerun-doc-inventory-self-check`. |
+| [`validate_amflow_live_rerun_doc_structure.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_doc_structure.py) | Validate structured evidence blocks, digest references, exit lines, and external retained-evidence markers in the nine AMFlow live-rerun notes. | `m7-amflow-live-rerun-doc-structure` and `m7-amflow-live-rerun-doc-structure-self-check`. |
 | [`validate_amflow_live_rerun_freshness.py`](../../tools/reference-harness/scripts/validate_amflow_live_rerun_freshness.py) | Validate that every AMFlow live-rerun note either carries `last-re-verified` metadata or is explicitly listed as `pending-first-re-verify` in [`amflow-live-rerun-freshness-registry.json`](amflow-live-rerun-freshness-registry.json). | `m7-amflow-live-rerun-freshness` and `m7-amflow-live-rerun-freshness-self-check`. |
 | [`validate_automatic_phasespace_blocker_docs.py`](../../tools/reference-harness/scripts/validate_automatic_phasespace_blocker_docs.py) | Validate that the `automatic_phasespace` known-gap row, blocker record, absent live-rerun note, and D246 sidecar stay fail-closed and synchronized. | `m7-automatic-phasespace-blocker-docs` and `m7-automatic-phasespace-blocker-docs-self-check`. |
 
@@ -263,6 +264,8 @@ Run it directly after editing release docs:
 ```sh
 python3 tools/reference-harness/scripts/validate_release_markdown.py
 python3 tools/reference-harness/scripts/validate_release_markdown.py --self-check
+python3 tools/reference-harness/scripts/validate_release_doc_metadata_fields.py --verify
+python3 tools/reference-harness/scripts/validate_release_doc_metadata_fields.py --self-check
 python3 tools/reference-harness/scripts/validate_release_tools_catalog.py --verify
 python3 tools/reference-harness/scripts/validate_release_tools_catalog.py --self-check
 python3 tools/reference-harness/scripts/validate_amflow_live_rerun_docs.py --verify
@@ -278,14 +281,22 @@ The validator checks local links, markdown fragments, and parseability of `sh`,
 fixtures plus missing-anchor, repository-escape, bad-shell-fence, and
 unsupported-language failures. It does not decide release readiness.
 
-The live-rerun inventory validator is narrower: it pins the current seven live
+The metadata-field validator is separate from the markdown structure, inventory,
+TOC, and freshness gates. It reads
+[`release-doc-metadata-fields.registry.json`](../../tools/reference-harness/specs/release/release-doc-metadata-fields.registry.json),
+classifies every `docs/release/*.md` file, and checks required fields such as
+live-rerun source/exit-code/SHA lines and known-gap status/blocker-reference
+columns. It does not rerun AMFlow, inspect freshness dates, or alter release
+evidence.
+
+The live-rerun inventory validator is narrower: it pins the current nine live
 retained-golden AMFlow rerun docs, requires each pinned row in
 [`amflow-example-coverage.md`](amflow-example-coverage.md) to cite its matching
 rerun note, and rejects an `automatic_phasespace` live-rerun promotion while the
 D246 blocker remains open. It does not run Mathematica, create AMFlow outputs,
 or widen the accepted runtime scope.
 
-The live-rerun freshness validator is narrower still: it checks only the seven
+The live-rerun freshness validator is narrower still: it checks only the nine
 committed live-rerun notes and
 [`amflow-live-rerun-freshness-registry.json`](amflow-live-rerun-freshness-registry.json).
 Every live-rerun note must either carry a valid `last-re-verified` line or be

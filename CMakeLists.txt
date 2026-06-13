@@ -632,6 +632,26 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-doc-metadata-fields
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_release_doc_metadata_fields.py
+      --verify
+  )
+  set_tests_properties(m7-release-doc-metadata-fields PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-release-doc-metadata-fields-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_release_doc_metadata_fields.py
+      --self-check
+  )
+  set_tests_properties(m7-release-doc-metadata-fields-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-tools-catalog-validation
     COMMAND
       ${Python3_EXECUTABLE}

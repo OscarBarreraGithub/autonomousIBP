@@ -41,6 +41,14 @@
       "reason": "Release signoff must keep the shell/CMake lint baseline verifier's discovery and regression fixtures live."
     },
     {
+      "name": "python-type-baseline",
+      "reason": "Release signoff must fail if repo-local Python tool mypy diagnostics grow or type coverage falls below the pinned baseline."
+    },
+    {
+      "name": "python-type-baseline-self-check",
+      "reason": "Release signoff must keep the Python type baseline verifier's mypy report parser, diagnostic counter, and fallback annotation fixtures live."
+    },
+    {
       "name": "amflow-coverage-baseline",
       "reason": "Release signoff must fail if the repo-local src line or function coverage regresses below the pinned coverage baseline tolerance."
     },

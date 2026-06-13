@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "scope": "python-type-hint-baseline",
+  "tool": "mypy",
+  "baseline_commit": "9277a291d82c745f119332ed51b900f4ac54e23b",
+  "baseline_captured_at_utc": "2026-06-13T03:59:12Z",
+  "source_surface": {
+    "tracked_python_file_count": 87,
+    "requested_surface": [
+      "tools/",
+      "scripts/",
+      "repo-root *.py"
+    ],
+    "source_args": [
+      "tools"
+    ],
+    "missing_requested_roots": [
+      "scripts/"
+    ],
+    "top_level_python_files": []
+  },
+  "diagnostic_count": 525,
+  "type_coverage": {
+    "percent": 77.54,
+    "imprecision_percent": 22.46,
+    "lines": 59878,
+    "report": "mypy --txt-report Total imprecision"
+  },
+  "annotation_fallback": {
+    "annotated_functions": 1887,
+    "unannotated_functions": 13,
+    "total_functions": 1900,
+    "percent": 99.32
+  },
+  "checker": {
+    "checker": "mypy",
+    "checker_executable": "mypy",
+    "checker_version": "mypy 1.10.0 (compiled: yes)",
+    "diagnostic_count": 525,
+    "type_coverage": {
+      "percent": 77.54,
+      "imprecision_percent": 22.46,
+      "lines": 59878,
+      "report": "mypy --txt-report Total imprecision"
+    },
+    "command": [
+      "mypy",
+      "--no-incremental",
+      "--cache-dir",
+      "<temporary-cache-dir>",
+      "--show-error-codes",
+      "--no-error-summary",
+      "--no-color-output",
+      "--txt-report",
+      "<temporary-report-dir>",
+      "tools"
+    ]
+  },
+  "comparison": {
+    "diagnostic_count": "actual must not exceed pinned diagnostic_count when mypy is available",
+    "type_coverage": "actual percent must not fall below pinned type_coverage.percent",
+    "annotation_fallback": "if mypy is unavailable, annotated function percent must not fall below annotation_fallback.percent"
+  }
+}

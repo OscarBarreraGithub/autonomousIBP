@@ -233,6 +233,28 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME python-type-baseline
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_python_type_baseline.py
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/diagnostics/python-type-baseline.json
+  )
+  set_tests_properties(python-type-baseline PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 600)
+
+  add_test(
+    NAME python-type-baseline-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_python_type_baseline.py
+      --self-check
+  )
+  set_tests_properties(python-type-baseline-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME amflow-upstream-example-inventory-self-check
     COMMAND
       ${Python3_EXECUTABLE}

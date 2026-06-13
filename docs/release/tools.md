@@ -57,6 +57,17 @@ It does not add tests or claim improved coverage.
 | --- | --- | --- |
 | [`verify_coverage_baseline.py`](../../tools/reference-harness/scripts/verify_coverage_baseline.py) | Rebuild with GCC coverage flags, run `amflow-tests` plus CTest, collect a `gcov` line/function summary for scoped `src/` files, and compare it against the pinned baseline. If `gcov` is unavailable, verify the scoped coverage instrumentation counts instead. | `amflow-coverage-baseline` and `amflow-coverage-baseline-self-check`. |
 
+## Python Type Baseline Gate
+
+This gate records the current type-checking posture for repo-local Python tools
+without adding or changing annotations in existing files. It fails if mypy
+diagnostics grow or mypy type coverage drops below the pinned baseline. If mypy
+is unavailable, it falls back to the pinned tracked-function annotation ratio.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_python_type_baseline.py`](../../tools/reference-harness/scripts/verify_python_type_baseline.py) | Run mypy across `tools/`, `scripts/`, and repo-root Python files, compare diagnostic count and type coverage against the pinned baseline, and fall back to the function annotation ratio only when mypy is unavailable. | `python-type-baseline` and `python-type-baseline-self-check`. |
+
 ## Sidecar Producers
 
 These helpers produce consumer-compatible release-review sidecars for

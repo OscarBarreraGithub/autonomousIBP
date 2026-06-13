@@ -793,6 +793,28 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-evidence-tarball-size
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m7_release_tarball_size.py
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/release/m7-tarball-size-baseline.json
+  )
+  set_tests_properties(m7-release-evidence-tarball-size PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME m7-release-evidence-tarball-size-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m7_release_tarball_size.py
+      --self-check
+  )
+  set_tests_properties(m7-release-evidence-tarball-size-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m5-golden-fingerprint-pins
     COMMAND
       ${Python3_EXECUTABLE}

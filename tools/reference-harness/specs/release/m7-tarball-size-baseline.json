@@ -1,0 +1,16 @@
+{
+  "baseline_evidence_corpus_sha256": "90a8d673f3faaf2d24115c142ad46fb3e2587c9b6b467d97e9dfaf3baddb2b55",
+  "baseline_file_count": 24,
+  "baseline_generated_at_utc": "2026-06-13T10:33:33Z",
+  "baseline_source_commit": "e08decc4c1feb2ee38966e4749eac85af32261b6",
+  "bundle_root": "m7-release-evidence",
+  "compressed_size_bytes": 31296,
+  "max_compressed_size_bytes": 34425,
+  "min_compressed_size_bytes": 28167,
+  "package_script": "tools/reference-harness/scripts/package_m7_release_evidence.py",
+  "readiness_sidecar": "tools/reference-harness/specs/m7/lane3/release-readiness.m5-accepted.full-output.json",
+  "scope": "m7-release-evidence-tarball-size-baseline",
+  "schema_version": 1,
+  "tolerance_percent": 10,
+  "tolerance_policy": "Fail if the compressed canonical M7 release evidence tarball is outside +/- 10% of the pinned byte size."
+}

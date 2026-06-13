@@ -201,6 +201,14 @@
       "reason": "Release signoff must keep the release-doc metadata field validator's missing-field and unclassified-doc fixtures live."
     },
     {
+      "name": "m7-release-evidence-tarball-size",
+      "reason": "Release signoff must fail if the canonical M7 release evidence tarball grows or shrinks beyond the pinned compressed-size tolerance window."
+    },
+    {
+      "name": "m7-release-evidence-tarball-size-self-check",
+      "reason": "Release signoff must keep the tarball-size verifier's window calculation and drift rejection fixtures live."
+    },
+    {
       "name": "m7-release-tools-catalog-validation",
       "reason": "Release signoff must verify mode-capable release tools stay cataloged with their CTest coverage names."
     },

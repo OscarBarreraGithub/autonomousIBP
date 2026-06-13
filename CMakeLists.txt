@@ -185,6 +185,28 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME include-order-baseline
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_include_order_baseline.py
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/diagnostics/include-order-baseline.json
+  )
+  set_tests_properties(include-order-baseline PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME include-order-baseline-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_include_order_baseline.py
+      --self-check
+  )
+  set_tests_properties(include-order-baseline-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME amflow-upstream-example-inventory-self-check
     COMMAND
       ${Python3_EXECUTABLE}

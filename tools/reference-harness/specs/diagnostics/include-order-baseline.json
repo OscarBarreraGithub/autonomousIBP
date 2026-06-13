@@ -1,0 +1,290 @@
+{
+  "schema_version": 1,
+  "tool": "include-order-baseline",
+  "scope_roots": [
+    "include",
+    "lib",
+    "src"
+  ],
+  "baseline_commit": "c162d15b98f7e24857e49c2bb3ed544a6de0b3fd",
+  "convention": {
+    "source_files": "matching public header first when present, then standard/system angle includes, then third-party angle includes, then project quoted includes",
+    "headers": "standard/system angle includes, then third-party angle includes, then project quoted includes",
+    "within_category": "lexicographic by include target"
+  },
+  "baseline_posture": "Existing deviations are pinned as diagnostics. The gate allows diagnostics to be resolved, but fails on new or additional diagnostics unless the baseline is intentionally updated.",
+  "file_count": 88,
+  "diagnostic_count": 21,
+  "comparison_key": [
+    "path",
+    "kind",
+    "include",
+    "previous_include",
+    "message",
+    "occurrence_count"
+  ],
+  "iwyu_baseline": {
+    "status": "unavailable",
+    "checked_commands": [
+      "include-what-you-use",
+      "iwyu",
+      "iwyu_tool.py"
+    ],
+    "diagnostic_count": null,
+    "notes": "No include-what-you-use executable was found in PATH."
+  },
+  "diagnostics": [
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "kind": "category-sort",
+      "include": "<complex>",
+      "previous_include": "<cstddef>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 4
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "kind": "category-sort",
+      "include": "\"amflow/core/de_system.hpp\"",
+      "previous_include": "\"amflow/core/problem_spec.hpp\"",
+      "message": "project includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<algorithm>",
+      "previous_include": "<array>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 2
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<boost/math/constants/constants.hpp>",
+      "previous_include": "<boost/math/special_functions/gamma.hpp>",
+      "message": "third_party includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 24
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<cctype>",
+      "previous_include": "<cmath>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 6
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<cmath>",
+      "previous_include": "<complex>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 5
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<cstdio>",
+      "previous_include": "<optional>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 16
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<exception>",
+      "previous_include": "<filesystem>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 10
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<filesystem>",
+      "previous_include": "<fstream>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 9
+        }
+      ]
+    },
+    {
+      "path": "src/cli/main.cpp",
+      "kind": "category-sort",
+      "include": "<fstream>",
+      "previous_include": "<iomanip>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "src/core/problem_spec.cpp",
+      "kind": "category-sort",
+      "include": "<set>",
+      "previous_include": "<stdexcept>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 5
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<cctype>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 6
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<exception>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 7
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<limits>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<numeric>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 9
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<optional>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 10
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<stdexcept>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<string>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "kind": "category-order",
+      "include": "<vector>",
+      "previous_include": "\"amflow/de/invariant_derivative_generation.hpp\"",
+      "message": "standard_or_system include appears after project include; expected order is self -> standard_or_system -> third_party -> project",
+      "occurrences": [
+        {
+          "line": 13
+        }
+      ]
+    },
+    {
+      "path": "src/kira/kira_backend.cpp",
+      "kind": "category-sort",
+      "include": "<fcntl.h>",
+      "previous_include": "<filesystem>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 9
+        }
+      ]
+    },
+    {
+      "path": "src/runtime/auxiliary_family.cpp",
+      "kind": "category-sort",
+      "include": "<set>",
+      "previous_include": "<sstream>",
+      "message": "standard_or_system includes are not sorted lexicographically",
+      "occurrences": [
+        {
+          "line": 7
+        }
+      ]
+    }
+  ]
+}

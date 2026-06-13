@@ -25,6 +25,14 @@
       "reason": "Release signoff must fail if the repo-local src compile-warning surface grows beyond the pinned fallback diagnostic baseline."
     },
     {
+      "name": "include-order-baseline",
+      "reason": "Release signoff must fail if scoped C++ include-order diagnostics grow beyond the pinned baseline."
+    },
+    {
+      "name": "include-order-baseline-self-check",
+      "reason": "Release signoff must keep the include-order baseline verifier's parser and regression fixtures live."
+    },
+    {
       "name": "source-license-header-gate",
       "reason": "Release signoff must fail if newly tracked C++, Python tool, or CMake sources lack license or copyright header metadata outside the pinned baseline."
     },

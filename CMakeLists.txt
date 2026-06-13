@@ -824,6 +824,15 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME reference-sidecar-schema-version-gate
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/verify_reference_sidecar_schema_versions.py
+  )
+  set_tests_properties(reference-sidecar-schema-version-gate PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-unaccepted-sidecar-review-queue
     COMMAND
       ${Python3_EXECUTABLE}

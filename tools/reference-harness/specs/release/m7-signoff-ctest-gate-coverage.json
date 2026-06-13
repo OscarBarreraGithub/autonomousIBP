@@ -161,6 +161,10 @@
       "reason": "Release signoff must keep release tooling catalog drift detection covered by synthetic failures."
     },
     {
+      "name": "reference-sidecar-schema-version-gate",
+      "reason": "Release signoff must fail if any committed reference-harness JSON sidecar lacks the schema_version field required for compatible consumers."
+    },
+    {
       "name": "m7-signoff-ctest-coverage-audit",
       "reason": "Release signoff must fail if a post-closure CTest addition is neither required nor explicitly excluded with a reason."
     },

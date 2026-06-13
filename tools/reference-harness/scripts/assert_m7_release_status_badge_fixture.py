@@ -47,6 +47,12 @@ def print_json_diff(expected: dict[str, Any], actual: dict[str, Any]) -> None:
     print("".join(diff), file=sys.stderr)
 
 
+def badge_payload_from_fixture(payload: dict[str, Any]) -> dict[str, Any]:
+    expected = dict(payload)
+    expected.pop("schema_version", None)
+    return expected
+
+
 def main() -> int:
     root = repo_root()
     completed = subprocess.run(
@@ -81,7 +87,7 @@ def main() -> int:
         print("release status badge output must be a JSON object", file=sys.stderr)
         return 1
 
-    expected = read_json(root / EXPECTED_BADGE_FIXTURE)
+    expected = badge_payload_from_fixture(read_json(root / EXPECTED_BADGE_FIXTURE))
     if actual != expected:
         print_json_diff(expected, actual)
         return 1

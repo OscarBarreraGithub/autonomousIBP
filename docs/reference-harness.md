@@ -148,6 +148,17 @@ retained outputs and rerun evidence.
 - `templates/`: copied benchmark, manifest, env, Wolfram, placeholder, qualification, and release-signoff templates
 - `state/`: bootstrap and fetch summaries for automation and audit trails
 
+## JSON Sidecar Schema Versions
+
+Every committed JSON sidecar under `tools/reference-harness/specs/` must carry a top-level
+positive integer `schema_version`; the current sidecar schema epoch is `1`. The
+`reference-sidecar-schema-version-gate` CTest check fails if a future sidecar omits this field.
+
+When a committed sidecar family adds, removes, renames, or changes the meaning or shape of a
+field, bump that family's `schema_version` and update its producer, consumer, fixture, and docs
+expectations in the same change. Pure value refreshes within the existing field contract keep the
+same `schema_version`.
+
 ## Bring-Up Sequence
 
 1. Materialize the harness root with `bootstrap_reference_harness.py`.

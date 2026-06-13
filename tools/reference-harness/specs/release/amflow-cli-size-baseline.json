@@ -1,0 +1,18 @@
+{
+  "baseline_build_type": "Release",
+  "baseline_file_command_summary": "ELF 64-bit LSB executable, x86-64, dynamically linked, not stripped",
+  "baseline_generated_at_utc": "2026-06-13T11:35:08Z",
+  "baseline_source_commit": "c6c7298977d096ea6fd315a5cac515619b775395",
+  "binary_target": "amflow-cli",
+  "max_stripped_size_bytes": 4984422,
+  "max_unstripped_size_bytes": 5943871,
+  "min_stripped_size_bytes": 3684138,
+  "min_unstripped_size_bytes": 4393297,
+  "scope": "amflow-cli-binary-size-baseline",
+  "schema_version": 1,
+  "strip_tool": "GNU strip version 2.30-125.el8_10",
+  "stripped_size_bytes": 4334280,
+  "tolerance_percent": 15,
+  "tolerance_policy": "Fail if the Release amflow-cli executable size, before or after strip --strip-all, is outside +/- 15% of the pinned byte size.",
+  "unstripped_size_bytes": 5168584
+}

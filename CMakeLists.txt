@@ -806,6 +806,29 @@ if(BUILD_TESTING)
     TIMEOUT 180)
 
   add_test(
+    NAME amflow-cli-binary-size
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_amflow_cli_size.py
+      $<TARGET_FILE:amflow-cli>
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/release/amflow-cli-size-baseline.json
+  )
+  set_tests_properties(amflow-cli-binary-size PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 60)
+
+  add_test(
+    NAME amflow-cli-binary-size-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_amflow_cli_size.py
+      --self-check
+  )
+  set_tests_properties(amflow-cli-binary-size-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-evidence-tarball-size-self-check
     COMMAND
       ${Python3_EXECUTABLE}

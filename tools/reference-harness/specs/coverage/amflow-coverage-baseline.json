@@ -27,6 +27,14 @@
     {
       "name": "source-license-header-gate",
       "reason": "This metadata-only gate does not affect C++ coverage and is owned by the normal non-coverage CTest suite."
+    },
+    {
+      "name": "amflow-cli-binary-size",
+      "reason": "Coverage instrumentation intentionally changes the amflow-cli executable size; the normal non-coverage Release CTest gate remains authoritative."
+    },
+    {
+      "name": "amflow-cli-binary-size-self-check",
+      "reason": "The binary-size verifier self-check does not affect C++ coverage and is owned by the normal non-coverage CTest suite."
     }
   ],
   "tolerance_percentage_points": 1.0,

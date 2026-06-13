@@ -217,6 +217,14 @@
       "reason": "Release signoff must keep the tarball-size verifier's window calculation and drift rejection fixtures live."
     },
     {
+      "name": "amflow-cli-binary-size",
+      "reason": "Release signoff must fail if the Release amflow-cli executable size, before or after stripping, leaves the pinned tolerance window."
+    },
+    {
+      "name": "amflow-cli-binary-size-self-check",
+      "reason": "Release signoff must keep the amflow-cli binary-size verifier's window calculation and stripped-copy drift rejection fixtures live."
+    },
+    {
       "name": "m7-release-tools-catalog-validation",
       "reason": "Release signoff must verify mode-capable release tools stay cataloged with their CTest coverage names."
     },

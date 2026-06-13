@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "tool": "shell-cmake-lint-baseline",
+  "baseline_commit": "1d0dd32d28f62499cfbb326b1c290b3d34e66483",
+  "baseline_posture": "Existing diagnostics are pinned as accepted findings. The CTest gate allows accepted diagnostics to be resolved, but fails on new or additional diagnostics unless the baseline is intentionally updated.",
+  "status": "clean",
+  "diagnostic_count": 0,
+  "comparison_key": [
+    "category",
+    "path",
+    "kind",
+    "message",
+    "occurrence_count"
+  ],
+  "discovered_files": {
+    "shell_scripts": [
+      "references/fetch_open_access.sh",
+      "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/capture_diphoton_200d.sbatch",
+      "tools/reference-harness/specs/phase1/2023-gg-to-gammagamma-light-quark-mi.lane101/capture_gg_to_gammagamma_light_quark_pi.sbatch",
+      "tools/reference-harness/specs/phase1/2023-jpsi-etac-bfactories.lane150/capture_jpsi_etac_bfactories_seed.sbatch",
+      "tools/reference-harness/specs/phase1/2023-ttj-planar-topology.lane111/capture_2023_ttj_planar_topology.sbatch",
+      "tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93/capture_box_integrals_fermion_bubbles_topology_h.sbatch",
+      "tools/reference-harness/specs/phase1/2024-gg-to-tth-one-loop-oeps2.lane99/capture_gg_to_tth_one_loop_oeps2_topology_c.sbatch",
+      "tools/reference-harness/specs/phase1/2024-h-to-bb-nnlo.lane154/capture_h_to_bb_nnlo_seed.sbatch",
+      "tools/reference-harness/specs/phase1/2024-higgs-gluon-form-factor-three-scales.lane144/capture_higgs_gluon_form_factor_three_scales_seed.sbatch",
+      "tools/reference-harness/specs/phase1/2024-tth-light-quark-loop-mi.lane117/capture_tth_light_quark_t0_euclidean.sbatch",
+      "tools/reference-harness/specs/phase1/2024-wpair-planar-mi.lane106/capture_wpair_planar_t1_euclidean.sbatch",
+      "tools/reference-harness/specs/phase1/2025-moller-ew-double-box.lane152/capture_moller_ew_double_box_seed.sbatch",
+      "tools/reference-harness/specs/phase1/five-point-one-mass-scattering.lane113/capture_five_point_one_mass_complex_proxy.sbatch",
+      "tools/reference-harness/specs/phase1/single-top-planar-nonplanar.lane96/capture_single_top_pl1_euclidean.sbatch",
+      "tools/reference-harness/specs/phase1/ttbar-w.lane122/capture_ttbar_w_automatic_loop_eps11_proxy.sbatch"
+    ],
+    "cmake_files": [
+      "CMakeLists.txt",
+      "cmake/Dependencies.cmake"
+    ],
+    "cmake_lists": [
+      "CMakeLists.txt"
+    ]
+  },
+  "preferred_tools": {
+    "shellcheck": {
+      "command": "shellcheck",
+      "status": "unavailable"
+    },
+    "cmake-format": {
+      "command": "cmake-format",
+      "status": "unavailable"
+    },
+    "cmake-lint": {
+      "command": "cmake-lint",
+      "status": "unavailable"
+    }
+  },
+  "fallback_checks": {
+    "reason": "Preferred shell/CMake lint tools are optional in this environment; when unavailable, the gate falls back to interpreter noexec checks for shell scripts plus CMake script/configure parse checks.",
+    "shell_syntax": {
+      "file_count": 15,
+      "passing_file_count": 15
+    },
+    "cmake_syntax": {
+      "cmake": {
+        "command": "cmake",
+        "status": "available",
+        "resolved_path": "/n/home09/obarrera/.local/bin/cmake"
+      },
+      "file_count": 2,
+      "passing_file_count": 2,
+      "configure_options": [
+        "-DBUILD_TESTING=OFF",
+        "-DAMFLOW_WITH_GINAC=OFF",
+        "-DAMFLOW_WITH_MPFR=OFF",
+        "-DAMFLOW_WITH_YAML_CPP=OFF"
+      ]
+    }
+  },
+  "diagnostics": []
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: LicenseRef-autoIBP-TBD
 """Validate release-doc metadata fields against the pinned class registry."""
 
 from __future__ import annotations

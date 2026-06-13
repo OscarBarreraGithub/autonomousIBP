@@ -33,6 +33,14 @@
       "reason": "Release signoff must keep the include-order baseline verifier's parser and regression fixtures live."
     },
     {
+      "name": "shell-cmake-lint-baseline",
+      "reason": "Release signoff must fail if tracked shell or CMake lint/syntax diagnostics grow beyond the pinned clean baseline."
+    },
+    {
+      "name": "shell-cmake-lint-baseline-self-check",
+      "reason": "Release signoff must keep the shell/CMake lint baseline verifier's discovery and regression fixtures live."
+    },
+    {
       "name": "amflow-coverage-baseline",
       "reason": "Release signoff must fail if the repo-local src line or function coverage regresses below the pinned coverage baseline tolerance."
     },

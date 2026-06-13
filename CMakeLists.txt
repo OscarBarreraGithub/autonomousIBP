@@ -209,6 +209,30 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME shell-cmake-lint-baseline
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_shell_cmake_lint_baseline.py
+      --build-dir
+      ${CMAKE_CURRENT_BINARY_DIR}/shell-cmake-lint-baseline
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/diagnostics/shell-cmake-lint-baseline.json
+  )
+  set_tests_properties(shell-cmake-lint-baseline PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 300)
+
+  add_test(
+    NAME shell-cmake-lint-baseline-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_shell_cmake_lint_baseline.py
+      --self-check
+  )
+  set_tests_properties(shell-cmake-lint-baseline-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME amflow-upstream-example-inventory-self-check
     COMMAND
       ${Python3_EXECUTABLE}

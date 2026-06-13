@@ -1,0 +1,622 @@
+{
+  "schema_version": 1,
+  "scope": "amflow-coverage-baseline",
+  "tool": "coverage-baseline",
+  "baseline_commit": "c162d15b98f7e24857e49c2bb3ed544a6de0b3fd",
+  "baseline_captured_at_utc": "2026-06-13T01:10:14Z",
+  "baseline_compiler": "c++ (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28)",
+  "coverage_engine": "gcov",
+  "fallback_reason": null,
+  "source_scope_prefixes": [
+    "src/"
+  ],
+  "coverage_flags": {
+    "cxx": "--coverage",
+    "exe_linker": "--coverage",
+    "shared_linker": "--coverage"
+  },
+  "test_sequence": [
+    "amflow-tests",
+    "ctest --output-on-failure with nested_ctest_excluded_tests"
+  ],
+  "nested_ctest_excluded_tests": [
+    {
+      "name": "amflow-public-symbol-surface",
+      "reason": "Coverage instrumentation changes the exported weak symbol surface; the normal non-coverage CTest gate remains authoritative for ABI drift."
+    },
+    {
+      "name": "source-license-header-gate",
+      "reason": "This metadata-only gate does not affect C++ coverage and is owned by the normal non-coverage CTest suite."
+    }
+  ],
+  "tolerance_percentage_points": 1.0,
+  "line_coverage": {
+    "covered": 25566,
+    "total": 30262,
+    "percent": 84.48
+  },
+  "function_coverage": {
+    "covered": 2233,
+    "total": 2384,
+    "percent": 93.67
+  },
+  "instrumentation": {
+    "source_gcno_count": 44,
+    "touched_source_gcda_count": 44
+  },
+  "file_count": 44,
+  "files": [
+    {
+      "path": "src/cli/main.cpp",
+      "line_coverage": {
+        "covered": 5750,
+        "total": 7592,
+        "percent": 75.74
+      },
+      "function_coverage": {
+        "covered": 447,
+        "total": 545,
+        "percent": 82.02
+      }
+    },
+    {
+      "path": "src/core/boundary_data.cpp",
+      "line_coverage": {
+        "covered": 92,
+        "total": 104,
+        "percent": 88.46
+      },
+      "function_coverage": {
+        "covered": 8,
+        "total": 8,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/core/de_system.cpp",
+      "line_coverage": {
+        "covered": 26,
+        "total": 31,
+        "percent": 83.87
+      },
+      "function_coverage": {
+        "covered": 2,
+        "total": 2,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/core/options.cpp",
+      "line_coverage": {
+        "covered": 56,
+        "total": 65,
+        "percent": 86.15
+      },
+      "function_coverage": {
+        "covered": 6,
+        "total": 6,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/core/problem_spec.cpp",
+      "line_coverage": {
+        "covered": 234,
+        "total": 254,
+        "percent": 92.13
+      },
+      "function_coverage": {
+        "covered": 15,
+        "total": 16,
+        "percent": 93.75
+      }
+    },
+    {
+      "path": "src/de/eta_derivative_generation.cpp",
+      "line_coverage": {
+        "covered": 33,
+        "total": 37,
+        "percent": 89.19
+      },
+      "function_coverage": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/eta_reduction_execution.cpp",
+      "line_coverage": {
+        "covered": 196,
+        "total": 219,
+        "percent": 89.5
+      },
+      "function_coverage": {
+        "covered": 25,
+        "total": 25,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/eta_reduction_preparation.cpp",
+      "line_coverage": {
+        "covered": 10,
+        "total": 10,
+        "percent": 100.0
+      },
+      "function_coverage": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/invariant_derivative_generation.cpp",
+      "line_coverage": {
+        "covered": 753,
+        "total": 863,
+        "percent": 87.25
+      },
+      "function_coverage": {
+        "covered": 60,
+        "total": 61,
+        "percent": 98.36
+      }
+    },
+    {
+      "path": "src/de/invariant_reduction_execution.cpp",
+      "line_coverage": {
+        "covered": 114,
+        "total": 132,
+        "percent": 86.36
+      },
+      "function_coverage": {
+        "covered": 13,
+        "total": 13,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/invariant_reduction_preparation.cpp",
+      "line_coverage": {
+        "covered": 48,
+        "total": 50,
+        "percent": 96.0
+      },
+      "function_coverage": {
+        "covered": 6,
+        "total": 6,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_generation.cpp",
+      "line_coverage": {
+        "covered": 283,
+        "total": 334,
+        "percent": 84.73
+      },
+      "function_coverage": {
+        "covered": 22,
+        "total": 22,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_reduction_execution.cpp",
+      "line_coverage": {
+        "covered": 129,
+        "total": 214,
+        "percent": 60.28
+      },
+      "function_coverage": {
+        "covered": 18,
+        "total": 24,
+        "percent": 75.0
+      }
+    },
+    {
+      "path": "src/de/lightlike_linear_derivative_reduction_preparation.cpp",
+      "line_coverage": {
+        "covered": 11,
+        "total": 11,
+        "percent": 100.0
+      },
+      "function_coverage": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/lightlike_linear_reduction_execution.cpp",
+      "line_coverage": {
+        "covered": 14,
+        "total": 15,
+        "percent": 93.33
+      },
+      "function_coverage": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/lightlike_linear_reduction_preparation.cpp",
+      "line_coverage": {
+        "covered": 6,
+        "total": 6,
+        "percent": 100.0
+      },
+      "function_coverage": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/de/reduction_assembly.cpp",
+      "line_coverage": {
+        "covered": 161,
+        "total": 199,
+        "percent": 80.9
+      },
+      "function_coverage": {
+        "covered": 11,
+        "total": 12,
+        "percent": 91.67
+      }
+    },
+    {
+      "path": "src/io/problem_spec_io.cpp",
+      "line_coverage": {
+        "covered": 363,
+        "total": 434,
+        "percent": 83.64
+      },
+      "function_coverage": {
+        "covered": 29,
+        "total": 29,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/io/sample_data.cpp",
+      "line_coverage": {
+        "covered": 61,
+        "total": 61,
+        "percent": 100.0
+      },
+      "function_coverage": {
+        "covered": 5,
+        "total": 5,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/kira/kira_backend.cpp",
+      "line_coverage": {
+        "covered": 1262,
+        "total": 1595,
+        "percent": 79.12
+      },
+      "function_coverage": {
+        "covered": 97,
+        "total": 98,
+        "percent": 98.98
+      }
+    },
+    {
+      "path": "src/kira/kira_insert_prefactors.cpp",
+      "line_coverage": {
+        "covered": 30,
+        "total": 32,
+        "percent": 93.75
+      },
+      "function_coverage": {
+        "covered": 3,
+        "total": 3,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/kira/target_reduction.cpp",
+      "line_coverage": {
+        "covered": 313,
+        "total": 345,
+        "percent": 90.72
+      },
+      "function_coverage": {
+        "covered": 44,
+        "total": 45,
+        "percent": 97.78
+      }
+    },
+    {
+      "path": "src/runtime/artifact_store.cpp",
+      "line_coverage": {
+        "covered": 424,
+        "total": 528,
+        "percent": 80.3
+      },
+      "function_coverage": {
+        "covered": 48,
+        "total": 50,
+        "percent": 96.0
+      }
+    },
+    {
+      "path": "src/runtime/auxiliary_family.cpp",
+      "line_coverage": {
+        "covered": 563,
+        "total": 620,
+        "percent": 90.81
+      },
+      "function_coverage": {
+        "covered": 30,
+        "total": 30,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/runtime/b61n_coefficient_state_transport.cpp",
+      "line_coverage": {
+        "covered": 350,
+        "total": 390,
+        "percent": 89.74
+      },
+      "function_coverage": {
+        "covered": 16,
+        "total": 16,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/runtime/b61n_coefficient_target_graph.cpp",
+      "line_coverage": {
+        "covered": 318,
+        "total": 368,
+        "percent": 86.41
+      },
+      "function_coverage": {
+        "covered": 39,
+        "total": 40,
+        "percent": 97.5
+      }
+    },
+    {
+      "path": "src/runtime/b61n_finite_start_coefficients.cpp",
+      "line_coverage": {
+        "covered": 192,
+        "total": 206,
+        "percent": 93.2
+      },
+      "function_coverage": {
+        "covered": 17,
+        "total": 17,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/runtime/b61n_laurent_matrix_evaluator.cpp",
+      "line_coverage": {
+        "covered": 349,
+        "total": 418,
+        "percent": 83.49
+      },
+      "function_coverage": {
+        "covered": 39,
+        "total": 39,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/runtime/boundary_generation.cpp",
+      "line_coverage": {
+        "covered": 448,
+        "total": 473,
+        "percent": 94.71
+      },
+      "function_coverage": {
+        "covered": 47,
+        "total": 48,
+        "percent": 97.92
+      }
+    },
+    {
+      "path": "src/runtime/complex_contour_propagator.cpp",
+      "line_coverage": {
+        "covered": 2110,
+        "total": 2362,
+        "percent": 89.33
+      },
+      "function_coverage": {
+        "covered": 100,
+        "total": 105,
+        "percent": 95.24
+      }
+    },
+    {
+      "path": "src/runtime/continuation_path.cpp",
+      "line_coverage": {
+        "covered": 282,
+        "total": 319,
+        "percent": 88.4
+      },
+      "function_coverage": {
+        "covered": 35,
+        "total": 37,
+        "percent": 94.59
+      }
+    },
+    {
+      "path": "src/runtime/cutkosky_transport.cpp",
+      "line_coverage": {
+        "covered": 1626,
+        "total": 1845,
+        "percent": 88.13
+      },
+      "function_coverage": {
+        "covered": 111,
+        "total": 113,
+        "percent": 98.23
+      }
+    },
+    {
+      "path": "src/runtime/ending_scheme.cpp",
+      "line_coverage": {
+        "covered": 283,
+        "total": 313,
+        "percent": 90.42
+      },
+      "function_coverage": {
+        "covered": 31,
+        "total": 33,
+        "percent": 93.94
+      }
+    },
+    {
+      "path": "src/runtime/endpoint_branch_ledger.cpp",
+      "line_coverage": {
+        "covered": 128,
+        "total": 157,
+        "percent": 81.53
+      },
+      "function_coverage": {
+        "covered": 18,
+        "total": 19,
+        "percent": 94.74
+      }
+    },
+    {
+      "path": "src/runtime/endpoint_local_model.cpp",
+      "line_coverage": {
+        "covered": 106,
+        "total": 137,
+        "percent": 77.37
+      },
+      "function_coverage": {
+        "covered": 12,
+        "total": 13,
+        "percent": 92.31
+      }
+    },
+    {
+      "path": "src/runtime/eta_mode.cpp",
+      "line_coverage": {
+        "covered": 701,
+        "total": 747,
+        "percent": 93.84
+      },
+      "function_coverage": {
+        "covered": 59,
+        "total": 60,
+        "percent": 98.33
+      }
+    },
+    {
+      "path": "src/runtime/lightlike_propagator.cpp",
+      "line_coverage": {
+        "covered": 2310,
+        "total": 2624,
+        "percent": 88.03
+      },
+      "function_coverage": {
+        "covered": 182,
+        "total": 188,
+        "percent": 96.81
+      }
+    },
+    {
+      "path": "src/runtime/physical_kinematics_guardrails.cpp",
+      "line_coverage": {
+        "covered": 348,
+        "total": 385,
+        "percent": 90.39
+      },
+      "function_coverage": {
+        "covered": 50,
+        "total": 51,
+        "percent": 98.04
+      }
+    },
+    {
+      "path": "src/solver/boundary_provider.cpp",
+      "line_coverage": {
+        "covered": 88,
+        "total": 97,
+        "percent": 90.72
+      },
+      "function_coverage": {
+        "covered": 15,
+        "total": 15,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/solver/boundary_request.cpp",
+      "line_coverage": {
+        "covered": 9,
+        "total": 9,
+        "percent": 100.0
+      },
+      "function_coverage": {
+        "covered": 1,
+        "total": 1,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/solver/coefficient_evaluator.cpp",
+      "line_coverage": {
+        "covered": 494,
+        "total": 529,
+        "percent": 93.38
+      },
+      "function_coverage": {
+        "covered": 79,
+        "total": 79,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/solver/precision_policy.cpp",
+      "line_coverage": {
+        "covered": 44,
+        "total": 51,
+        "percent": 86.27
+      },
+      "function_coverage": {
+        "covered": 4,
+        "total": 4,
+        "percent": 100.0
+      }
+    },
+    {
+      "path": "src/solver/series_solver.cpp",
+      "line_coverage": {
+        "covered": 3921,
+        "total": 4505,
+        "percent": 87.04
+      },
+      "function_coverage": {
+        "covered": 415,
+        "total": 432,
+        "percent": 96.06
+      }
+    },
+    {
+      "path": "src/solver/singular_point_analysis.cpp",
+      "line_coverage": {
+        "covered": 527,
+        "total": 576,
+        "percent": 91.49
+      },
+      "function_coverage": {
+        "covered": 69,
+        "total": 69,
+        "percent": 100.0
+      }
+    }
+  ]
+}

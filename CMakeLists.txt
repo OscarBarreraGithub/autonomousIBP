@@ -4,6 +4,8 @@ project(amflow_cpp VERSION 0.1.0 LANGUAGES CXX)
 
 include(cmake/Dependencies.cmake)
 
+option(AMFLOW_ENABLE_COVERAGE_BASELINE_GATE "Enable the coverage baseline CTest gate." ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -229,6 +231,32 @@ if(BUILD_TESTING)
   set_tests_properties(amflow-compile-warning-baseline PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     TIMEOUT 900)
+
+  if(AMFLOW_ENABLE_COVERAGE_BASELINE_GATE)
+    add_test(
+      NAME amflow-coverage-baseline
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_coverage_baseline.py
+        --build-dir
+        ${CMAKE_CURRENT_BINARY_DIR}/coverage-baseline
+        --baseline
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/coverage/amflow-coverage-baseline.json
+    )
+    set_tests_properties(amflow-coverage-baseline PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 5400)
+
+    add_test(
+      NAME amflow-coverage-baseline-self-check
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_coverage_baseline.py
+        --self-check
+    )
+    set_tests_properties(amflow-coverage-baseline-self-check PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  endif()
 
   add_test(
     NAME b64ag-golden-recapture-readiness-self-check

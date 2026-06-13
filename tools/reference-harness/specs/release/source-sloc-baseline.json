@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "scope": "total-source-sloc-baseline",
+  "tool": "source-sloc-baseline",
+  "baseline_commit": "b00da151bc435337e2716db6e9514ecf41c90abb",
+  "baseline_captured_at_utc": "2026-06-13T14:54:09Z",
+  "source_roots": [
+    "lib",
+    "include",
+    "src",
+    "tools"
+  ],
+  "counting_policy": "Tracked files under lib/, include/, src/, and tools/ are grouped as C++ (.c/.cc/.cpp/.cxx/.h/.hh/.hpp/.hxx/.ipp/.ixx), Python (.py), or CMake (CMakeLists.txt/.cmake). Blank lines and leading whole-line comments are excluded; C++ block and line comments are stripped before counting physical source lines.",
+  "categories": [
+    {
+      "category": "cpp",
+      "file_count": 88,
+      "source_lines": 55131,
+      "tolerance_percent": 5,
+      "min_source_lines": 52375,
+      "max_source_lines": 57887
+    },
+    {
+      "category": "python",
+      "file_count": 100,
+      "source_lines": 58194,
+      "tolerance_percent": 5,
+      "min_source_lines": 55285,
+      "max_source_lines": 61103
+    },
+    {
+      "category": "cmake",
+      "file_count": 0,
+      "source_lines": 0,
+      "tolerance_percent": 5,
+      "min_source_lines": 0,
+      "max_source_lines": 0
+    },
+    {
+      "category": "total",
+      "file_count": 188,
+      "source_lines": 113325,
+      "tolerance_percent": 5,
+      "min_source_lines": 107659,
+      "max_source_lines": 118991
+    }
+  ]
+}

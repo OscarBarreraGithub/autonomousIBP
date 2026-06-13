@@ -268,6 +268,28 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME source-sloc-baseline
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_source_sloc_baseline.py
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/release/source-sloc-baseline.json
+  )
+  set_tests_properties(source-sloc-baseline PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME source-sloc-baseline-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_source_sloc_baseline.py
+      --self-check
+  )
+  set_tests_properties(source-sloc-baseline-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME env-var-registry
     COMMAND
       ${Python3_EXECUTABLE}

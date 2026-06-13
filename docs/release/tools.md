@@ -47,6 +47,16 @@ project license or stamp headers onto existing files.
 | --- | --- | --- |
 | [`verify_source_license_headers.py`](../../tools/reference-harness/scripts/verify_source_license_headers.py) | Verify scoped C++, Python tool, and CMake files either carry expected license/copyright header metadata or remain in the pinned missing-header baseline, while reporting the missing root license file as a known gap. | `source-license-header-gate` and `source-license-header-gate-self-check`. |
 
+## Source SLOC Baseline Gate
+
+This gate records scoped source-line counts by language and fails if C++,
+Python, CMake, or total source SLOC moves outside the pinned tolerance window.
+It is a size guard only; it does not classify code quality or release readiness.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_source_sloc_baseline.py`](../../tools/reference-harness/scripts/verify_source_sloc_baseline.py) | Count tracked source lines under `lib/`, `include/`, `src/`, and `tools/` by C++, Python, CMake, and total categories, then compare them with the pinned tolerance windows. | `source-sloc-baseline` and `source-sloc-baseline-self-check`. |
+
 ## Environment Variable Registry Gate
 
 This gate documents repo-local build/runtime environment-variable reads and

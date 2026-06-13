@@ -2,10 +2,10 @@
   "schema_version": 1,
   "scope": "python-type-hint-baseline",
   "tool": "mypy",
-  "baseline_commit": "9277a291d82c745f119332ed51b900f4ac54e23b",
-  "baseline_captured_at_utc": "2026-06-13T03:59:12Z",
+  "baseline_commit": "b00da151bc435337e2716db6e9514ecf41c90abb",
+  "baseline_captured_at_utc": "2026-06-13T14:54:53Z",
   "source_surface": {
-    "tracked_python_file_count": 87,
+    "tracked_python_file_count": 100,
     "requested_surface": [
       "tools/",
       "scripts/",
@@ -19,28 +19,28 @@
     ],
     "top_level_python_files": []
   },
-  "diagnostic_count": 525,
+  "diagnostic_count": 543,
   "type_coverage": {
-    "percent": 77.54,
-    "imprecision_percent": 22.46,
-    "lines": 59878,
+    "percent": 77.93,
+    "imprecision_percent": 22.07,
+    "lines": 64223,
     "report": "mypy --txt-report Total imprecision"
   },
   "annotation_fallback": {
-    "annotated_functions": 1887,
+    "annotated_functions": 2174,
     "unannotated_functions": 13,
-    "total_functions": 1900,
-    "percent": 99.32
+    "total_functions": 2187,
+    "percent": 99.41
   },
   "checker": {
     "checker": "mypy",
     "checker_executable": "mypy",
     "checker_version": "mypy 1.10.0 (compiled: yes)",
-    "diagnostic_count": 525,
+    "diagnostic_count": 543,
     "type_coverage": {
-      "percent": 77.54,
-      "imprecision_percent": 22.46,
-      "lines": 59878,
+      "percent": 77.93,
+      "imprecision_percent": 22.07,
+      "lines": 64223,
       "report": "mypy --txt-report Total imprecision"
     },
     "command": [

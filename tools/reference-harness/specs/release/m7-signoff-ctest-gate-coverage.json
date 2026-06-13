@@ -49,6 +49,14 @@
       "reason": "Release signoff must keep the Python type baseline verifier's mypy report parser, diagnostic counter, and fallback annotation fixtures live."
     },
     {
+      "name": "cpp-api-doc-coverage-baseline",
+      "reason": "Release signoff must fail if C++ public include-surface API documentation coverage regresses below the pinned baseline."
+    },
+    {
+      "name": "cpp-api-doc-coverage-baseline-self-check",
+      "reason": "Release signoff must keep the C++ API documentation coverage verifier's parser, access-scope, and regression fixtures live."
+    },
+    {
       "name": "amflow-coverage-baseline",
       "reason": "Release signoff must fail if the repo-local src line or function coverage regresses below the pinned coverage baseline tolerance."
     },

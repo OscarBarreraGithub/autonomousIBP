@@ -278,6 +278,28 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME cpp-api-doc-coverage-baseline
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_api_doc_coverage_baseline.py
+      --baseline
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/diagnostics/api-doc-coverage-baseline.json
+  )
+  set_tests_properties(cpp-api-doc-coverage-baseline PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 180)
+
+  add_test(
+    NAME cpp-api-doc-coverage-baseline-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_api_doc_coverage_baseline.py
+      --self-check
+  )
+  set_tests_properties(cpp-api-doc-coverage-baseline-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME amflow-upstream-example-inventory-self-check
     COMMAND
       ${Python3_EXECUTABLE}

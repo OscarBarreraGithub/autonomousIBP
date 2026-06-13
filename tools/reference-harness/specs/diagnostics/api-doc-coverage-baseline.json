@@ -1,0 +1,3126 @@
+{
+  "schema_version": 1,
+  "scope": "cpp-public-api-doc-coverage-baseline",
+  "tool": "leading-doxygen-comment-fallback",
+  "baseline_commit": "8977808a1f7bfeff07f8742107fecc3b79b22107",
+  "baseline_captured_at_utc": "2026-06-13T04:55:29Z",
+  "source_surface": {
+    "root": "include",
+    "tracked_header_count": 44,
+    "header_suffixes": [
+      ".h",
+      ".hh",
+      ".hpp",
+      ".hxx"
+    ]
+  },
+  "doxygen_probe": {
+    "status": "unavailable",
+    "checked_command": "doxygen",
+    "notes": "No doxygen executable was found in PATH at baseline capture; the gate uses the requested leading-comment fallback."
+  },
+  "documentation_rule": "A public include-surface function is documented only when the declaration is immediately preceded by a Doxygen-style /// line or /** block.",
+  "coverage": {
+    "documented_functions": 0,
+    "undocumented_functions": 309,
+    "total_public_functions": 309,
+    "percent": 0.0
+  },
+  "comparison": {
+    "undocumented_functions": "existing undocumented public functions are pinned as diagnostics; resolved entries are allowed, but new undocumented entries fail",
+    "percent": "actual documented function percent must not fall below the pinned percent"
+  },
+  "documented_symbols": [],
+  "undocumented_symbols": [
+    {
+      "path": "include/amflow/core/boundary_data.hpp",
+      "qualified_name": "amflow::BoundaryUnsolvedError::BoundaryUnsolvedError",
+      "declaration": "explicit BoundaryUnsolvedError(const std::string& message)",
+      "occurrences": [
+        {
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/boundary_data.hpp",
+      "qualified_name": "amflow::BoundaryUnsolvedError::failure_code",
+      "declaration": "const char* failure_code() const noexcept",
+      "occurrences": [
+        {
+          "line": 28
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/boundary_data.hpp",
+      "qualified_name": "amflow::ValidateBoundaryCondition",
+      "declaration": "std::vector<std::string> ValidateBoundaryCondition(const BoundaryCondition& condition)",
+      "occurrences": [
+        {
+          "line": 33
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/boundary_data.hpp",
+      "qualified_name": "amflow::ValidateBoundaryRequest",
+      "declaration": "std::vector<std::string> ValidateBoundaryRequest(const DESystem& system, const BoundaryRequest& request)",
+      "occurrences": [
+        {
+          "line": 31
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/boundary_data.hpp",
+      "qualified_name": "amflow::ValidateManualBoundaryAttachment",
+      "declaration": "void ValidateManualBoundaryAttachment(const DESystem& system, const std::vector<BoundaryRequest>& boundary_requests, const std::vector<BoundaryCondition>& explicit_conditions, const std::string& start_location)",
+      "occurrences": [
+        {
+          "line": 34
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/de_system.hpp",
+      "qualified_name": "amflow::DescribeDESystem",
+      "declaration": "std::string DescribeDESystem(const DESystem& system)",
+      "occurrences": [
+        {
+          "line": 35
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/de_system.hpp",
+      "qualified_name": "amflow::ValidateDESystem",
+      "declaration": "std::vector<std::string> ValidateDESystem(const DESystem& system)",
+      "occurrences": [
+        {
+          "line": 34
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/options.hpp",
+      "qualified_name": "amflow::SerializeAmfOptionsYaml",
+      "declaration": "std::string SerializeAmfOptionsYaml(const AmfOptions& options)",
+      "occurrences": [
+        {
+          "line": 53
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/options.hpp",
+      "qualified_name": "amflow::SerializeReductionOptionsYaml",
+      "declaration": "std::string SerializeReductionOptionsYaml(const ReductionOptions& options)",
+      "occurrences": [
+        {
+          "line": 54
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/options.hpp",
+      "qualified_name": "amflow::ToString",
+      "declaration": "std::string ToString(ReductionMode mode)",
+      "occurrences": [
+        {
+          "line": 19
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::AmflowPrefactorConvention::AmflowPrefactorConvention",
+      "declaration": "AmflowPrefactorConvention() : plus_i0_loop_prefactor( ), minus_i0_loop_prefactor( ), cut_prefactor( ), loop_sign(AmflowLoopPrefactorSign::PlusI0)",
+      "occurrences": [
+        {
+          "line": 116
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::BuildOverallAmflowPrefactor",
+      "declaration": "std::string BuildOverallAmflowPrefactor( const ProblemSpec& spec, const AmflowPrefactorConvention& convention = AmflowPrefactorConvention{})",
+      "occurrences": [
+        {
+          "line": 130
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::DerivePropagatorPrescriptionFromLoopPrescriptions",
+      "declaration": "std::optional<FeynmanPrescription> DerivePropagatorPrescriptionFromLoopPrescriptions( const FamilyDefinition& family, const Propagator& propagator)",
+      "occurrences": [
+        {
+          "line": 79
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::EffectivePropagatorVariant",
+      "declaration": "PropagatorVariant EffectivePropagatorVariant(const Propagator& propagator)",
+      "occurrences": [
+        {
+          "line": 56
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::ParseFeynmanPrescription",
+      "declaration": "std::optional<FeynmanPrescription> ParseFeynmanPrescription(int raw_value)",
+      "occurrences": [
+        {
+          "line": 34
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::ParsePropagatorVariantKeyword",
+      "declaration": "std::optional<PropagatorVariant> ParsePropagatorVariantKeyword(const std::string& keyword)",
+      "occurrences": [
+        {
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::Propagator::Propagator",
+      "declaration": "Propagator() = default",
+      "occurrences": [
+        {
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::Propagator::Propagator",
+      "declaration": "Propagator(std::string expression_in, std::string mass_in = , PropagatorKind kind_in = PropagatorKind::Standard, int prescription_in = -1, std::optional<PropagatorVariant> variant_in = std::nullopt) : expression(std::move(expression_in)), mass(std::move(mass_in)), kind(kind_in), prescription(prescription_in), variant(std::move(variant_in))",
+      "occurrences": [
+        {
+          "line": 38
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::SerializeProblemSpecYaml",
+      "declaration": "std::string SerializeProblemSpecYaml(const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 129
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::TargetIntegral::Label",
+      "declaration": "std::string Label() const",
+      "occurrences": [
+        {
+          "line": 67
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::ToString",
+      "declaration": "std::string ToString(AmflowLoopPrefactorSign sign)",
+      "occurrences": [
+        {
+          "line": 107
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::ToString",
+      "declaration": "std::string ToString(PropagatorKind kind)",
+      "occurrences": [
+        {
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::ToString",
+      "declaration": "std::string ToString(PropagatorVariant variant)",
+      "occurrences": [
+        {
+          "line": 25
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/core/problem_spec.hpp",
+      "qualified_name": "amflow::ValidateProblemSpec",
+      "declaration": "std::vector<std::string> ValidateProblemSpec(const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 128
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/eta_derivative_generation.hpp",
+      "qualified_name": "amflow::GenerateEtaDerivativeVariable",
+      "declaration": "GeneratedDerivativeVariable GenerateEtaDerivativeVariable( const ParsedMasterList& master_basis, const AuxiliaryFamilyTransformResult& auxiliary_family)",
+      "occurrences": [
+        {
+          "line": 33
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/eta_reduction_execution.hpp",
+      "qualified_name": "amflow::BuildEtaGeneratedDESystem",
+      "declaration": "DESystem BuildEtaGeneratedDESystem( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 19
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/eta_reduction_execution.hpp",
+      "qualified_name": "amflow::BuildEtaGeneratedDESystem",
+      "declaration": "DESystem BuildEtaGeneratedDESystem( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/eta_reduction_execution.hpp",
+      "qualified_name": "amflow::RunEtaGeneratedReduction",
+      "declaration": "EtaGeneratedReductionExecution RunEtaGeneratedReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 40
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/eta_reduction_execution.hpp",
+      "qualified_name": "amflow::RunEtaGeneratedReduction",
+      "declaration": "EtaGeneratedReductionExecution RunEtaGeneratedReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 50
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/eta_reduction_preparation.hpp",
+      "qualified_name": "amflow::PrepareEtaGeneratedReduction",
+      "declaration": "EtaGeneratedReductionPreparation PrepareEtaGeneratedReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const ReductionOptions& options, const ArtifactLayout& layout, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_derivative_generation.hpp",
+      "qualified_name": "amflow::BuildInvariantDerivativeSeed",
+      "declaration": "InvariantDerivativeSeed BuildInvariantDerivativeSeed(const ProblemSpec& spec, const std::string& invariant_name)",
+      "occurrences": [
+        {
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_derivative_generation.hpp",
+      "qualified_name": "amflow::GenerateInvariantDerivativeVariable",
+      "declaration": "GeneratedDerivativeVariable GenerateInvariantDerivativeVariable( const ParsedMasterList& master_basis, const InvariantDerivativeSeed& seed)",
+      "occurrences": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_reduction_execution.hpp",
+      "qualified_name": "amflow::BuildInvariantGeneratedDESystem",
+      "declaration": "DESystem BuildInvariantGeneratedDESystem( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& invariant_name, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable)",
+      "occurrences": [
+        {
+          "line": 20
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_reduction_execution.hpp",
+      "qualified_name": "amflow::BuildInvariantGeneratedDESystemList",
+      "declaration": "DESystem BuildInvariantGeneratedDESystemList( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::vector<std::string>& invariant_names, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable)",
+      "occurrences": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_reduction_execution.hpp",
+      "qualified_name": "amflow::RunInvariantGeneratedReduction",
+      "declaration": "InvariantGeneratedReductionExecution RunInvariantGeneratedReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, const InvariantDerivativeSeed& seed, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable)",
+      "occurrences": [
+        {
+          "line": 47
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_reduction_execution.hpp",
+      "qualified_name": "amflow::RunInvariantGeneratedReduction",
+      "declaration": "InvariantGeneratedReductionExecution RunInvariantGeneratedReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& invariant_name, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable)",
+      "occurrences": [
+        {
+          "line": 38
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_reduction_preparation.hpp",
+      "qualified_name": "amflow::PrepareInvariantGeneratedReduction",
+      "declaration": "InvariantGeneratedReductionPreparation PrepareInvariantGeneratedReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, const InvariantDerivativeSeed& seed, const ReductionOptions& options, const ArtifactLayout& layout)",
+      "occurrences": [
+        {
+          "line": 30
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_reduction_preparation.hpp",
+      "qualified_name": "amflow::PrepareInvariantGeneratedReduction",
+      "declaration": "InvariantGeneratedReductionPreparation PrepareInvariantGeneratedReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& invariant_name, const ReductionOptions& options, const ArtifactLayout& layout)",
+      "occurrences": [
+        {
+          "line": 23
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/invariant_reduction_preparation.hpp",
+      "qualified_name": "amflow::PrepareInvariantGeneratedReductionList",
+      "declaration": "InvariantGeneratedReductionBatchPreparation PrepareInvariantGeneratedReductionList( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::vector<std::string>& invariant_names, const ReductionOptions& options, const ArtifactLayout& layout)",
+      "occurrences": [
+        {
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_derivative_generation.hpp",
+      "qualified_name": "amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable",
+      "declaration": "GeneratedDerivativeVariable GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable( const ParsedMasterList& master_basis, const LightlikeLinearAuxiliaryTransformResult& auxiliary_family)",
+      "occurrences": [
+        {
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_derivative_reduction_execution.hpp",
+      "qualified_name": "amflow::ApplyReviewedLightlikeLinearAuxiliaryDerivativeExactDimensionOverride",
+      "declaration": "void ApplyReviewedLightlikeLinearAuxiliaryDerivativeExactDimensionOverride( BackendPreparation& preparation, const ArtifactLayout& layout, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 41
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_derivative_reduction_execution.hpp",
+      "qualified_name": "amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem",
+      "declaration": "DESystem BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 46
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_derivative_reduction_execution.hpp",
+      "qualified_name": "amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem",
+      "declaration": "DESystem BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& x_symbol, const std::optional<std::string>& dimension_expression)",
+      "occurrences": [
+        {
+          "line": 56
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_derivative_reduction_execution.hpp",
+      "qualified_name": "amflow::RunReviewedLightlikeLinearAuxiliaryDerivativeReduction",
+      "declaration": "LightlikeLinearAuxiliaryDerivativeReductionExecution RunReviewedLightlikeLinearAuxiliaryDerivativeReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_derivative_reduction_execution.hpp",
+      "qualified_name": "amflow::RunReviewedLightlikeLinearAuxiliaryDerivativeReduction",
+      "declaration": "LightlikeLinearAuxiliaryDerivativeReductionExecution RunReviewedLightlikeLinearAuxiliaryDerivativeReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& x_symbol, const std::optional<std::string>& dimension_expression)",
+      "occurrences": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_derivative_reduction_preparation.hpp",
+      "qualified_name": "amflow::PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction",
+      "declaration": "LightlikeLinearAuxiliaryDerivativeReductionPreparation PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_reduction_execution.hpp",
+      "qualified_name": "amflow::RunReviewedLightlikeLinearAuxiliaryReduction",
+      "declaration": "LightlikeLinearAuxiliaryReductionExecution RunReviewedLightlikeLinearAuxiliaryReduction( const ProblemSpec& spec, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/lightlike_linear_reduction_preparation.hpp",
+      "qualified_name": "amflow::PrepareReviewedLightlikeLinearAuxiliaryReduction",
+      "declaration": "LightlikeLinearAuxiliaryReductionPreparation PrepareReviewedLightlikeLinearAuxiliaryReduction( const ProblemSpec& spec, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 16
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/reduction_assembly.hpp",
+      "qualified_name": "amflow::AssembleGeneratedDerivativeDESystem",
+      "declaration": "DESystem AssembleGeneratedDerivativeDESystem( const ParsedMasterList& master_basis, const std::vector<GeneratedDerivativeVariableReductionInput>& variable_inputs)",
+      "occurrences": [
+        {
+          "line": 34
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/reduction_assembly.hpp",
+      "qualified_name": "amflow::AssembleReducedDESystem",
+      "declaration": "DESystem AssembleReducedDESystem( const ParsedMasterList& master_basis, const std::vector<ReducedDerivativeVariableInput>& variable_inputs)",
+      "occurrences": [
+        {
+          "line": 30
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/de/reduction_assembly.hpp",
+      "qualified_name": "amflow::MasterSetInstabilityError::MasterSetInstabilityError",
+      "declaration": "explicit MasterSetInstabilityError(const std::string& message) : std::runtime_error(message)",
+      "occurrences": [
+        {
+          "line": 15
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/problem_spec_io.hpp",
+      "qualified_name": "amflow::LoadProblemSpecFile",
+      "declaration": "ProblemSpec LoadProblemSpecFile(const std::filesystem::path& path)",
+      "occurrences": [
+        {
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/problem_spec_io.hpp",
+      "qualified_name": "amflow::ParseProblemSpecYaml",
+      "declaration": "ProblemSpec ParseProblemSpecYaml(const std::string& yaml)",
+      "occurrences": [
+        {
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/problem_spec_io.hpp",
+      "qualified_name": "amflow::ValidateLoadedProblemSpec",
+      "declaration": "std::vector<std::string> ValidateLoadedProblemSpec(const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 13
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/sample_data.hpp",
+      "qualified_name": "amflow::MakeBootstrapManifest",
+      "declaration": "ArtifactManifest MakeBootstrapManifest()",
+      "occurrences": [
+        {
+          "line": 14
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/sample_data.hpp",
+      "qualified_name": "amflow::MakeSampleBoundaryCondition",
+      "declaration": "BoundaryCondition MakeSampleBoundaryCondition()",
+      "occurrences": [
+        {
+          "line": 13
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/sample_data.hpp",
+      "qualified_name": "amflow::MakeSampleBoundaryRequest",
+      "declaration": "BoundaryRequest MakeSampleBoundaryRequest()",
+      "occurrences": [
+        {
+          "line": 12
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/sample_data.hpp",
+      "qualified_name": "amflow::MakeSampleDESystem",
+      "declaration": "DESystem MakeSampleDESystem()",
+      "occurrences": [
+        {
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/io/sample_data.hpp",
+      "qualified_name": "amflow::MakeSampleProblemSpec",
+      "declaration": "ProblemSpec MakeSampleProblemSpec()",
+      "occurrences": [
+        {
+          "line": 10
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::EmitJobFiles",
+      "declaration": "KiraJobFiles EmitJobFiles(const ProblemSpec& spec, const ReductionOptions& options) const",
+      "occurrences": [
+        {
+          "line": 64
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::EmitJobFilesForTargets",
+      "declaration": "KiraJobFiles EmitJobFilesForTargets(const ProblemSpec& spec, const ReductionOptions& options, const std::vector<TargetIntegral>& targets) const",
+      "occurrences": [
+        {
+          "line": 65
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::ExecutePrepared",
+      "declaration": "CommandExecutionResult ExecutePrepared(const BackendPreparation& preparation, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable) const",
+      "occurrences": [
+        {
+          "line": 73
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::MakeExecutionCommand",
+      "declaration": "PreparedCommand MakeExecutionCommand(const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const std::vector<std::string>& command_arguments = {})",
+      "occurrences": [
+        {
+          "line": 68
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::Name",
+      "declaration": "std::string Name() const override",
+      "occurrences": [
+        {
+          "line": 53
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::ParseMasterList",
+      "declaration": "ParsedMasterList ParseMasterList(const std::filesystem::path& artifact_root, const std::string& family) const",
+      "occurrences": [
+        {
+          "line": 77
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::ParseReductionResult",
+      "declaration": "ParsedReductionResult ParseReductionResult(const std::filesystem::path& artifact_root, const std::string& family) const",
+      "occurrences": [
+        {
+          "line": 79
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::Prepare",
+      "declaration": "BackendPreparation Prepare(const ProblemSpec& spec, const ReductionOptions& options, const ArtifactLayout& layout) const override",
+      "occurrences": [
+        {
+          "line": 56
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::PrepareForTargets",
+      "declaration": "BackendPreparation PrepareForTargets(const ProblemSpec& spec, const ReductionOptions& options, const ArtifactLayout& layout, const std::vector<TargetIntegral>& targets) const",
+      "occurrences": [
+        {
+          "line": 59
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_backend.hpp",
+      "qualified_name": "amflow::KiraBackend::Validate",
+      "declaration": "std::vector<std::string> Validate(const ProblemSpec& spec, const ReductionOptions& options) const override",
+      "occurrences": [
+        {
+          "line": 54
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_insert_prefactors.hpp",
+      "qualified_name": "amflow::SerializeKiraInsertPrefactorsSurface",
+      "declaration": "std::string SerializeKiraInsertPrefactorsSurface( const KiraInsertPrefactorsSurface& surface)",
+      "occurrences": [
+        {
+          "line": 21
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/kira_insert_prefactors.hpp",
+      "qualified_name": "amflow::ValidateKiraInsertPrefactorsSurface",
+      "declaration": "std::vector<std::string> ValidateKiraInsertPrefactorsSurface( const KiraInsertPrefactorsSurface& surface)",
+      "occurrences": [
+        {
+          "line": 19
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/reduction_backend.hpp",
+      "qualified_name": "amflow::CommandExecutionResult::Succeeded",
+      "declaration": "bool Succeeded() const",
+      "occurrences": [
+        {
+          "line": 50
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/reduction_backend.hpp",
+      "qualified_name": "amflow::ReductionBackend::Name",
+      "declaration": "virtual std::string Name() const = 0",
+      "occurrences": [
+        {
+          "line": 59
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/reduction_backend.hpp",
+      "qualified_name": "amflow::ReductionBackend::Prepare",
+      "declaration": "virtual BackendPreparation Prepare(const ProblemSpec& spec, const ReductionOptions& options, const ArtifactLayout& layout) const = 0",
+      "occurrences": [
+        {
+          "line": 62
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/reduction_backend.hpp",
+      "qualified_name": "amflow::ReductionBackend::Validate",
+      "declaration": "virtual std::vector<std::string> Validate(const ProblemSpec& spec, const ReductionOptions& options) const = 0",
+      "occurrences": [
+        {
+          "line": 60
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/reduction_backend.hpp",
+      "qualified_name": "amflow::ReductionBackend::~ReductionBackend",
+      "declaration": "virtual ~ReductionBackend() = default",
+      "occurrences": [
+        {
+          "line": 57
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/reduction_backend.hpp",
+      "qualified_name": "amflow::WritePreparationFiles",
+      "declaration": "std::vector<std::string> WritePreparationFiles(const BackendPreparation& preparation, const ArtifactLayout& layout)",
+      "occurrences": [
+        {
+          "line": 67
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/kira/target_reduction.hpp",
+      "qualified_name": "amflow::ApplyParsedTargetReductionToEpsilonCoefficients",
+      "declaration": "std::vector<std::vector<SolverDiagnostics::EpsilonCoefficient>> ApplyParsedTargetReductionToEpsilonCoefficients( const ParsedReductionResult& reduction_result, const std::vector<TargetIntegral>& requested_targets, const std::vector<MasterIntegral>& available_masters, const std::vector<std::vector<SolverDiagnostics::EpsilonCoefficient>>& available_master_coefficients, const std::string& dimension_expression, int max_eps_order)",
+      "occurrences": [
+        {
+          "line": 13
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::ComputeArtifactFingerprint",
+      "declaration": "std::string ComputeArtifactFingerprint(const std::string& text)",
+      "occurrences": [
+        {
+          "line": 120
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::EnsureArtifactLayout",
+      "declaration": "ArtifactLayout EnsureArtifactLayout(const std::filesystem::path& root)",
+      "occurrences": [
+        {
+          "line": 117
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::MakeCommandLogPaths",
+      "declaration": "CommandLogPaths MakeCommandLogPaths(const ArtifactLayout& layout, const std::string& command_name)",
+      "occurrences": [
+        {
+          "line": 118
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::MakeEtaContinuationPlanManifest",
+      "declaration": "EtaContinuationPlanManifest MakeEtaContinuationPlanManifest( const EtaContinuationPlan& plan, const std::string& run_id = )",
+      "occurrences": [
+        {
+          "line": 134
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::MakeEtaEndpointBranchLedgerManifest",
+      "declaration": "EtaEndpointBranchLedgerManifest MakeEtaEndpointBranchLedgerManifest( const EtaEndpointBranchLedger& ledger, const std::string& run_id = )",
+      "occurrences": [
+        {
+          "line": 150
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::MakeEtaEndpointLocalModelManifest",
+      "declaration": "EtaEndpointLocalModelManifest MakeEtaEndpointLocalModelManifest( const EtaEndpointLocalModel& model, const std::string& run_id = )",
+      "occurrences": [
+        {
+          "line": 142
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::MakeFileBackedKiraRunManifest",
+      "declaration": "ArtifactManifest MakeFileBackedKiraRunManifest(const FileBackedKiraRunManifestInput& input)",
+      "occurrences": [
+        {
+          "line": 123
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::ParseSolvedPathCacheManifestYaml",
+      "declaration": "SolvedPathCacheManifest ParseSolvedPathCacheManifestYaml(const std::string& yaml)",
+      "occurrences": [
+        {
+          "line": 130
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::ReadSolvedPathCacheManifest",
+      "declaration": "SolvedPathCacheManifest ReadSolvedPathCacheManifest(const std::filesystem::path& path)",
+      "occurrences": [
+        {
+          "line": 131
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::ResolveReductionFamilyRoot",
+      "declaration": "std::filesystem::path ResolveReductionFamilyRoot(const std::filesystem::path& artifact_root, const std::string& family)",
+      "occurrences": [
+        {
+          "line": 121
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::ResolveSolvedPathCacheManifestPath",
+      "declaration": "std::filesystem::path ResolveSolvedPathCacheManifestPath(const ArtifactLayout& layout, const std::string& slot_name)",
+      "occurrences": [
+        {
+          "line": 127
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::SerializeArtifactManifestYaml",
+      "declaration": "std::string SerializeArtifactManifestYaml(const ArtifactManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 124
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::SerializeEtaContinuationPlanManifestYaml",
+      "declaration": "std::string SerializeEtaContinuationPlanManifestYaml( const EtaContinuationPlanManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 137
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::SerializeEtaEndpointBranchLedgerManifestYaml",
+      "declaration": "std::string SerializeEtaEndpointBranchLedgerManifestYaml( const EtaEndpointBranchLedgerManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 153
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::SerializeEtaEndpointLocalModelManifestYaml",
+      "declaration": "std::string SerializeEtaEndpointLocalModelManifestYaml( const EtaEndpointLocalModelManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 145
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::SerializeSolvedPathCacheManifestYaml",
+      "declaration": "std::string SerializeSolvedPathCacheManifestYaml(const SolvedPathCacheManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 129
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::WriteArtifactManifest",
+      "declaration": "std::filesystem::path WriteArtifactManifest(const ArtifactLayout& layout, const ArtifactManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 125
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::WriteEtaContinuationPlanManifest",
+      "declaration": "std::filesystem::path WriteEtaContinuationPlanManifest( const ArtifactLayout& layout, const EtaContinuationPlanManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 139
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::WriteEtaEndpointBranchLedgerManifest",
+      "declaration": "std::filesystem::path WriteEtaEndpointBranchLedgerManifest( const ArtifactLayout& layout, const EtaEndpointBranchLedgerManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 155
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::WriteEtaEndpointLocalModelManifest",
+      "declaration": "std::filesystem::path WriteEtaEndpointLocalModelManifest( const ArtifactLayout& layout, const EtaEndpointLocalModelManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 147
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/artifact_store.hpp",
+      "qualified_name": "amflow::WriteSolvedPathCacheManifest",
+      "declaration": "std::filesystem::path WriteSolvedPathCacheManifest(const std::filesystem::path& path, const SolvedPathCacheManifest& manifest)",
+      "occurrences": [
+        {
+          "line": 132
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/auxiliary_family.hpp",
+      "qualified_name": "amflow::ApplyEtaInsertion",
+      "declaration": "AuxiliaryFamilyTransformResult ApplyEtaInsertion( const ProblemSpec& spec, const EtaInsertionDecision& decision, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/auxiliary_family.hpp",
+      "qualified_name": "amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform",
+      "declaration": "LightlikeLinearAuxiliaryTransformResult ApplyReviewedLightlikeLinearAuxiliaryTransform( const ProblemSpec& spec, std::size_t propagator_index, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 32
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/auxiliary_family.hpp",
+      "qualified_name": "amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator",
+      "declaration": "Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator( const ProblemSpec& spec, std::size_t propagator_index, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 24
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/auxiliary_family.hpp",
+      "qualified_name": "amflow::SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex",
+      "declaration": "std::size_t SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex( const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_state_transport.hpp",
+      "qualified_name": "amflow::PropagateB61nCoefficientState",
+      "declaration": "B61nCoefficientStateTransportResult PropagateB61nCoefficientState( const std::vector<std::string>& master_labels, const B61nCoefficientTargetGraph& target_graph, const B61nLaurentMatrixEvaluator& laurent_matrix_evaluator, const B61nFiniteStartCoefficientData& finite_start_coefficients, const std::vector<ComplexContourNumber>& waypoints, const B61nCoefficientStateTransportOptions& options = {})",
+      "occurrences": [
+        {
+          "line": 92
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_state_transport.hpp",
+      "qualified_name": "amflow::PublishB61nCoefficientStateTargets",
+      "declaration": "B61nCoefficientStatePublicationResult PublishB61nCoefficientStateTargets( const std::vector<std::string>& master_labels, const B61nCoefficientTargetGraph& target_graph, const B61nCoefficientStateTransportResult& transport_result, const B61nCoefficientStatePublicationOptions& options = {})",
+      "occurrences": [
+        {
+          "line": 100
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::B61nDefaultRow56CoefficientOrderRanges",
+      "declaration": "std::vector<B61nCoefficientOrderRange> B61nDefaultRow56CoefficientOrderRanges( const std::vector<std::string>& master_labels)",
+      "occurrences": [
+        {
+          "line": 57
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::B61nRow56PublicTargetNodes",
+      "declaration": "std::vector<B61nCoefficientNode> B61nRow56PublicTargetNodes( const std::vector<std::string>& master_labels)",
+      "occurrences": [
+        {
+          "line": 54
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::B61nRow56RetainedMasterLabels",
+      "declaration": "const std::vector<std::string>& B61nRow56RetainedMasterLabels()",
+      "occurrences": [
+        {
+          "line": 51
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::B61nRow56ReviewedSourceAnchorLabels",
+      "declaration": "const std::vector<std::string>& B61nRow56ReviewedSourceAnchorLabels()",
+      "occurrences": [
+        {
+          "line": 52
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::BuildB61nCoefficientTargetGraph",
+      "declaration": "B61nCoefficientTargetGraph BuildB61nCoefficientTargetGraph( const std::vector<std::string>& master_labels, const std::vector<B61nMatrixEpsilonSupport>& matrix_support, const std::vector<B61nCoefficientOrderRange>& coefficient_order_ranges, const std::vector<B61nCoefficientNode>& public_targets, const std::vector<B61nCoefficientNode>& reviewed_source_anchor_nodes = {})",
+      "occurrences": [
+        {
+          "line": 63
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::BuildB61nRow56CoefficientTargetGraph",
+      "declaration": "B61nCoefficientTargetGraph BuildB61nRow56CoefficientTargetGraph( const std::vector<std::string>& master_labels, const std::vector<B61nMatrixEpsilonSupport>& matrix_support)",
+      "occurrences": [
+        {
+          "line": 70
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::ExtractB61nMatrixEpsilonSupport",
+      "declaration": "std::vector<B61nMatrixEpsilonSupport> ExtractB61nMatrixEpsilonSupport( const std::vector<std::vector<std::string>>& matrix)",
+      "occurrences": [
+        {
+          "line": 60
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_coefficient_target_graph.hpp",
+      "qualified_name": "amflow::FormatB61nCoefficientNode",
+      "declaration": "std::string FormatB61nCoefficientNode( const B61nCoefficientNode& node, const std::vector<std::string>& master_labels)",
+      "occurrences": [
+        {
+          "line": 74
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_finite_start_coefficients.hpp",
+      "qualified_name": "amflow::AuditB61nFiniteStartCoefficientData",
+      "declaration": "B61nFiniteStartCoefficientAudit AuditB61nFiniteStartCoefficientData( const std::vector<std::string>& master_labels, const B61nCoefficientTargetGraph& target_graph, const std::vector<B61nFiniteStartCoefficientValue>& eta_infinity_coefficients, const std::vector<B61nFiniteStartCoefficientValue>& reviewed_source_anchor_coefficients, bool finite_start_samples_present, const std::string& finite_start_eta = {})",
+      "occurrences": [
+        {
+          "line": 66
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_finite_start_coefficients.hpp",
+      "qualified_name": "amflow::B61nFiniteStartCoefficientSourceLabel",
+      "declaration": "std::string B61nFiniteStartCoefficientSourceLabel( B61nFiniteStartCoefficientSource source)",
+      "occurrences": [
+        {
+          "line": 63
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_finite_start_coefficients.hpp",
+      "qualified_name": "amflow::BuildB61nFiniteStartCoefficientData",
+      "declaration": "B61nFiniteStartCoefficientData BuildB61nFiniteStartCoefficientData( const std::vector<std::string>& master_labels, const B61nCoefficientTargetGraph& target_graph, const std::vector<B61nFiniteStartCoefficientValue>& eta_infinity_coefficients, const std::vector<B61nFiniteStartCoefficientValue>& reviewed_source_anchor_coefficients, bool finite_start_samples_present, const std::string& finite_start_eta = {})",
+      "occurrences": [
+        {
+          "line": 75
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_laurent_matrix_evaluator.hpp",
+      "qualified_name": "amflow::BuildB61nRealLaurentMatrixEvaluator",
+      "declaration": "B61nLaurentMatrixEvaluator BuildB61nRealLaurentMatrixEvaluator( const std::vector<std::vector<std::string>>& matrix, const std::string& variable_name, const B61nLaurentNumericSubstitutions& numeric_substitutions, const B61nCoefficientTargetGraph& target_graph)",
+      "occurrences": [
+        {
+          "line": 43
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/b61n_laurent_matrix_evaluator.hpp",
+      "qualified_name": "amflow::EvaluateB61nLaurentMatrixCoefficientsAtEta",
+      "declaration": "B61nLaurentMatrixEvaluation EvaluateB61nLaurentMatrixCoefficientsAtEta( const std::vector<std::vector<std::string>>& matrix, const std::string& variable_name, const B61nLaurentNumericSubstitutions& numeric_substitutions, const ComplexContourNumber& eta)",
+      "occurrences": [
+        {
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::AnalyzeCutkoskyPhaseSpaceCutTopology",
+      "declaration": "CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology( const FamilyDefinition& family)",
+      "occurrences": [
+        {
+          "line": 36
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::AnalyzeCutkoskyPhaseSpaceCutTopology",
+      "declaration": "CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology( const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 38
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest",
+      "declaration": "BoundaryRequest GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 70
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest",
+      "declaration": "BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 65
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest",
+      "declaration": "BoundaryRequest GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest( const ProblemSpec& spec, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 44
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GenerateBuiltinEtaInfinityBoundaryRequest",
+      "declaration": "BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest( const ProblemSpec& spec, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 41
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest",
+      "declaration": "BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest( const ProblemSpec& spec, const EndingDecision& decision, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 56
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest",
+      "declaration": "BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest( const ProblemSpec& spec, const std::string& ending_scheme_name, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 60
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GeneratePlannedEtaInfinityBoundaryRequest",
+      "declaration": "BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest( const ProblemSpec& spec, const EndingDecision& decision, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 47
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/boundary_generation.hpp",
+      "qualified_name": "amflow::GeneratePlannedEtaInfinityBoundaryRequest",
+      "declaration": "BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest( const ProblemSpec& spec, const std::string& ending_scheme_name, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 51
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::ApplyComplexContourScalarReducibleFrobeniusEndpointRows",
+      "declaration": "ComplexContourScalarReducibleEndpointRows ApplyComplexContourScalarReducibleFrobeniusEndpointRows( const ComplexContourMatrixEvaluator& matrix_evaluator, const ComplexContourNumber& match_eta, const ComplexContourVector& match_values, const ComplexContourScalarReducibleEndpointOptions& options = {})",
+      "occurrences": [
+        {
+          "line": 252
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::BuildComplexContourCoefficientStateMatrix",
+      "declaration": "ComplexContourMatrix BuildComplexContourCoefficientStateMatrix( const std::vector<ComplexContourMatrix>& matrix_coefficients, std::size_t master_dimension, int min_matrix_eps_order, int min_state_eps_order, int max_state_eps_order)",
+      "occurrences": [
+        {
+          "line": 268
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::ComplexContourMatrix",
+      "declaration": "std::function<ComplexContourMatrix(const ComplexContourNumber& eta)>",
+      "occurrences": [
+        {
+          "line": 20
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::ComputeComplexContourEtaZeroFrobeniusRecurrence",
+      "declaration": "ComplexContourFrobeniusRecurrence ComputeComplexContourEtaZeroFrobeniusRecurrence( const ComplexContourMatrixEvaluator& matrix_evaluator, std::size_t dimension, const ComplexContourFrobeniusRecurrenceOptions& options)",
+      "occurrences": [
+        {
+          "line": 242
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::ComputeComplexContourEtaZeroIndicialEquation",
+      "declaration": "ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation( const ComplexContourMatrixEvaluator& matrix_evaluator, std::size_t dimension)",
+      "occurrences": [
+        {
+          "line": 232
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::ComputeComplexContourEtaZeroIndicialEquation",
+      "declaration": "ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation( const ComplexContourMatrixEvaluator& matrix_evaluator, std::size_t dimension, ComplexContourNumber residue_probe_eta, ComplexContourFloat residue_tolerance)",
+      "occurrences": [
+        {
+          "line": 236
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::EvaluateComplexContourFrobeniusEtaZeroEndpoint",
+      "declaration": "ComplexContourFrobeniusEndpointEvaluation EvaluateComplexContourFrobeniusEtaZeroEndpoint( const ComplexContourFrobeniusRecurrence& recurrence)",
+      "occurrences": [
+        {
+          "line": 248
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::EvaluateScalarComplexFrobeniusSeries",
+      "declaration": "ComplexContourNumber EvaluateScalarComplexFrobeniusSeries( const ComplexContourScalarFrobeniusSeriesPatch& patch, const ComplexContourNumber& eta, EtaContourHalfPlane half_plane = EtaContourHalfPlane::Lower)",
+      "occurrences": [
+        {
+          "line": 302
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::FlattenComplexContourCoefficientState",
+      "declaration": "ComplexContourVector FlattenComplexContourCoefficientState( const std::vector<ComplexContourVector>& coefficient_vectors)",
+      "occurrences": [
+        {
+          "line": 259
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::GenerateScalarComplexFrobeniusEndpointPatch",
+      "declaration": "ComplexContourScalarFrobeniusSeriesPatch GenerateScalarComplexFrobeniusEndpointPatch( const ComplexContourMatrixEvaluator& matrix_evaluator, const ComplexContourNumber& endpoint, const ComplexContourFloat& sample_radius, std::size_t order, std::size_t sample_count = 0)",
+      "occurrences": [
+        {
+          "line": 294
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::MakeComplexContourCoefficientStateMatrixEvaluator",
+      "declaration": "ComplexContourMatrixEvaluator MakeComplexContourCoefficientStateMatrixEvaluator( const ComplexContourLaurentMatrixEvaluator& matrix_evaluator, std::size_t master_dimension, int min_matrix_eps_order, int min_state_eps_order, int max_state_eps_order)",
+      "occurrences": [
+        {
+          "line": 275
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::MatchScalarComplexFrobeniusEndpointCoefficient",
+      "declaration": "ComplexContourNumber MatchScalarComplexFrobeniusEndpointCoefficient( const ComplexContourScalarFrobeniusSeriesPatch& patch, const ComplexContourNumber& match_eta, const ComplexContourNumber& match_value, EtaContourHalfPlane half_plane = EtaContourHalfPlane::Lower)",
+      "occurrences": [
+        {
+          "line": 307
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::PropagateComplexContourVector",
+      "declaration": "ComplexContourPropagationResult PropagateComplexContourVector( const ComplexContourVector& initial_values, const std::vector<ComplexContourNumber>& waypoints, const ComplexContourMatrixEvaluator& matrix_evaluator, const ComplexContourPropagationOptions& options = {})",
+      "occurrences": [
+        {
+          "line": 282
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::PropagateComplexContourVectorAlongWaypoints",
+      "declaration": "ComplexContourPropagationResult PropagateComplexContourVectorAlongWaypoints( const ComplexContourVector& initial_values, const std::vector<ComplexContourNumber>& waypoints, const ComplexContourMatrixEvaluator& matrix_evaluator, const ComplexContourPropagationOptions& options = {})",
+      "occurrences": [
+        {
+          "line": 288
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/complex_contour_propagator.hpp",
+      "qualified_name": "amflow::UnflattenComplexContourCoefficientState",
+      "declaration": "std::vector<ComplexContourVector> UnflattenComplexContourCoefficientState( const ComplexContourVector& coefficient_state, std::size_t master_dimension, int min_state_eps_order, int max_state_eps_order)",
+      "occurrences": [
+        {
+          "line": 262
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/continuation_path.hpp",
+      "qualified_name": "amflow::FinalizeEtaContinuationContour",
+      "declaration": "EtaContinuationPlan FinalizeEtaContinuationContour( const DESystem& system, const ProblemSpec& spec, const std::string& eta_symbol, const std::vector<std::string>& contour_point_expressions, EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper)",
+      "occurrences": [
+        {
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/continuation_path.hpp",
+      "qualified_name": "amflow::FinalizeEtaContinuationContourWithTargetEndpointSingular",
+      "declaration": "EtaContinuationPlan FinalizeEtaContinuationContourWithTargetEndpointSingular( const DESystem& system, const ProblemSpec& spec, const std::string& eta_symbol, const std::vector<std::string>& contour_point_expressions, const std::string& target_endpoint_singular_expression, EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper)",
+      "occurrences": [
+        {
+          "line": 44
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/continuation_path.hpp",
+      "qualified_name": "amflow::PlanEtaContinuationContour",
+      "declaration": "EtaContinuationPlan PlanEtaContinuationContour( const DESystem& system, const ProblemSpec& spec, const std::string& eta_symbol, const std::string& start_location, const std::string& target_location, EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper)",
+      "occurrences": [
+        {
+          "line": 52
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/continuation_path.hpp",
+      "qualified_name": "amflow::PlanEtaContinuationContourWithTargetEndpointSingular",
+      "declaration": "EtaContinuationPlan PlanEtaContinuationContourWithTargetEndpointSingular( const DESystem& system, const ProblemSpec& spec, const std::string& eta_symbol, const std::string& start_location, const std::string& target_location, const std::string& target_endpoint_singular_expression, EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper)",
+      "occurrences": [
+        {
+          "line": 60
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/continuation_path.hpp",
+      "qualified_name": "amflow::ToString",
+      "declaration": "std::string ToString(EtaContourHalfPlane half_plane)",
+      "occurrences": [
+        {
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit",
+      "declaration": "CutkoskyResidueCoefficientAudit BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit( const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 368
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildAutomaticPhaseSpaceSymbolicIntegrand",
+      "declaration": "CutkoskySymbolicIntegrand BuildAutomaticPhaseSpaceSymbolicIntegrand( const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 370
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentCrossValidationGate",
+      "declaration": "CutkoskyWeightedResidueMomentCrossValidationGate BuildAutomaticPhaseSpaceWeightedResidueMomentCrossValidationGate( const ProblemSpec& spec, int max_eps_order, int requested_precision_digits = 80)",
+      "occurrences": [
+        {
+          "line": 401
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeed",
+      "declaration": "CutkoskyWeightedResidueMomentSeed BuildAutomaticPhaseSpaceWeightedResidueMomentSeed( const ProblemSpec& spec, std::size_t uncut_denominator_index, int max_eps_order, int requested_precision_digits = 80)",
+      "occurrences": [
+        {
+          "line": 382
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds",
+      "declaration": "std::vector<CutkoskyWeightedResidueMomentSeed> BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds( const ProblemSpec& spec, int max_eps_order, int requested_precision_digits = 80)",
+      "occurrences": [
+        {
+          "line": 388
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildCutkoskyEtaZeroTransportScaffold",
+      "declaration": "CutkoskyEtaZeroTransportAudit BuildCutkoskyEtaZeroTransportScaffold( const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 366
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildCutkoskyPrefactorEpsilonSeries",
+      "declaration": "CutkoskyPrefactorSeries BuildCutkoskyPrefactorEpsilonSeries( std::size_t loop_count, int min_eps_order, int max_eps_order, int requested_precision_digits = 80)",
+      "occurrences": [
+        {
+          "line": 341
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildCutkoskyResidueEndpointModel",
+      "declaration": "CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel( const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 330
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildCutkoskyWeightedResidueEvaluationPlan",
+      "declaration": "CutkoskyWeightedResidueEvaluationPlan BuildCutkoskyWeightedResidueEvaluationPlan(const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 378
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::BuildFeynmanPrescriptionSymbolicSubintegralAssembly",
+      "declaration": "CutkoskySymbolicSubintegralAssembly BuildFeynmanPrescriptionSymbolicSubintegralAssembly(const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 374
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint",
+      "declaration": "std::string ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint( const CutkoskyScopedWeightedResidueEvaluation& evaluation)",
+      "occurrences": [
+        {
+          "line": 416
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds",
+      "declaration": "CutkoskyWeightedResidueMomentCrossValidationGate CrossValidateCutkoskyWeightedResidueMomentSeeds( const CutkoskyWeightedResidueEvaluationPlan& plan, const std::vector<CutkoskyWeightedResidueMomentSeed>& seeds)",
+      "occurrences": [
+        {
+          "line": 397
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue",
+      "declaration": "CutkoskyScopedWeightedResidueEvaluation EvaluateAutomaticPhaseSpaceScopedWeightedResidue( const ProblemSpec& spec, std::size_t uncut_denominator_index, int max_eps_order, int requested_precision_digits = 80)",
+      "occurrences": [
+        {
+          "line": 408
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::ExtractCutkoskyResidueEndpointPoles",
+      "declaration": "std::vector<CutkoskyResidueEndpointPole> ExtractCutkoskyResidueEndpointPoles( const CutkoskyResidueEndpointModel& model)",
+      "occurrences": [
+        {
+          "line": 332
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::MultiplyCutkoskyPrefactorIntoLaurentSeries",
+      "declaration": "std::vector<CutkoskyPrefactorSeriesTerm> MultiplyCutkoskyPrefactorIntoLaurentSeries( const CutkoskyPrefactorSeries& prefactor, const std::vector<CutkoskyPrefactorSeriesTerm>& residue_series, int min_eps_order, int max_eps_order)",
+      "occurrences": [
+        {
+          "line": 346
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::MultiplyCutkoskyPrefactorIntoResidueSeries",
+      "declaration": "CutkoskyResidueSeries MultiplyCutkoskyPrefactorIntoResidueSeries( const CutkoskyPrefactorSeries& prefactor, const CutkoskyResidueSeries& residue_series, int min_eps_order, int max_eps_order)",
+      "occurrences": [
+        {
+          "line": 352
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::PickCutkoskyEtaZeroTerm",
+      "declaration": "CutkoskyEtaZeroSelectionResult PickCutkoskyEtaZeroTerm( const std::vector<CutkoskyEtaZeroTerm>& terms)",
+      "occurrences": [
+        {
+          "line": 336
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::PlanCutkoskyEtaZeroContour",
+      "declaration": "std::vector<CutkoskyEtaContourWaypoint> PlanCutkoskyEtaZeroContour( const CutkoskyResidueEndpointModel& model)",
+      "occurrences": [
+        {
+          "line": 334
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::ProjectCutkoskyResidueSeriesToEtaZeroTerms",
+      "declaration": "std::vector<CutkoskyEtaZeroTerm> ProjectCutkoskyResidueSeriesToEtaZeroTerms( const CutkoskyResidueSeries& series, int eps_order)",
+      "occurrences": [
+        {
+          "line": 357
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskyBranchLedgerEntrySummary",
+      "declaration": "std::string SerializeCutkoskyBranchLedgerEntrySummary( const CutkoskyBranchLedgerEntry& entry)",
+      "occurrences": [
+        {
+          "line": 362
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskyBranchLedgerSummaries",
+      "declaration": "std::vector<std::string> SerializeCutkoskyBranchLedgerSummaries( const std::vector<CutkoskyBranchLedgerEntry>& ledger)",
+      "occurrences": [
+        {
+          "line": 364
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit",
+      "declaration": "std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit( const CutkoskyScopedWeightedResidueEvaluation& evaluation)",
+      "occurrences": [
+        {
+          "line": 414
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskySymbolicIntegrandAudit",
+      "declaration": "std::string SerializeCutkoskySymbolicIntegrandAudit( const CutkoskySymbolicIntegrand& integrand)",
+      "occurrences": [
+        {
+          "line": 372
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskySymbolicSubintegralAssemblyAudit",
+      "declaration": "std::string SerializeCutkoskySymbolicSubintegralAssemblyAudit( const CutkoskySymbolicSubintegralAssembly& assembly)",
+      "occurrences": [
+        {
+          "line": 376
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit",
+      "declaration": "std::string SerializeCutkoskyWeightedResidueEvaluationPlanAudit( const CutkoskyWeightedResidueEvaluationPlan& plan)",
+      "occurrences": [
+        {
+          "line": 380
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit",
+      "declaration": "std::string SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit( const CutkoskyWeightedResidueMomentCrossValidationGate& gate)",
+      "occurrences": [
+        {
+          "line": 406
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskyWeightedResidueMomentSeedAudit",
+      "declaration": "std::string SerializeCutkoskyWeightedResidueMomentSeedAudit( const CutkoskyWeightedResidueMomentSeed& seed)",
+      "occurrences": [
+        {
+          "line": 393
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit",
+      "declaration": "std::string SerializeCutkoskyWeightedResidueMomentSeedPacketAudit( const std::vector<CutkoskyWeightedResidueMomentSeed>& seeds)",
+      "occurrences": [
+        {
+          "line": 395
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/cutkosky_transport.hpp",
+      "qualified_name": "amflow::ValidateCutkoskyResiduePublicationGate",
+      "declaration": "void ValidateCutkoskyResiduePublicationGate( const CutkoskyResidueSeries& series)",
+      "occurrences": [
+        {
+          "line": 360
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::BuiltinEndingSchemes",
+      "declaration": "std::vector<std::string> BuiltinEndingSchemes()",
+      "occurrences": [
+        {
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::EndingScheme::Name",
+      "declaration": "virtual std::string Name() const = 0",
+      "occurrences": [
+        {
+          "line": 22
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::EndingScheme::Plan",
+      "declaration": "virtual EndingDecision Plan(const ProblemSpec& spec) const = 0",
+      "occurrences": [
+        {
+          "line": 23
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::EndingScheme::~EndingScheme",
+      "declaration": "virtual ~EndingScheme() = default",
+      "occurrences": [
+        {
+          "line": 20
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::MakeBuiltinEndingScheme",
+      "declaration": "std::shared_ptr<EndingScheme> MakeBuiltinEndingScheme(const std::string& name)",
+      "occurrences": [
+        {
+          "line": 27
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::PlanAmfOptionsEndingScheme",
+      "declaration": "EndingDecision PlanAmfOptionsEndingScheme( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes)",
+      "occurrences": [
+        {
+          "line": 39
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::PlanEndingScheme",
+      "declaration": "EndingDecision PlanEndingScheme( const ProblemSpec& spec, const std::string& ending_scheme_name, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes)",
+      "occurrences": [
+        {
+          "line": 31
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::PlanEndingSchemeList",
+      "declaration": "EndingDecision PlanEndingSchemeList( const ProblemSpec& spec, const std::vector<std::string>& ending_scheme_names, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes)",
+      "occurrences": [
+        {
+          "line": 35
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/ending_scheme.hpp",
+      "qualified_name": "amflow::ResolveEndingScheme",
+      "declaration": "std::shared_ptr<EndingScheme> ResolveEndingScheme( const std::string& name, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes)",
+      "occurrences": [
+        {
+          "line": 28
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/endpoint_branch_ledger.hpp",
+      "qualified_name": "amflow::AnalyzeEtaEndpointBranchLedger",
+      "declaration": "EtaEndpointBranchLedgerAnalysis AnalyzeEtaEndpointBranchLedger( const ProblemSpec& spec, const EtaContinuationPlan& plan, const EtaEndpointLocalModel& local_model)",
+      "occurrences": [
+        {
+          "line": 39
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/endpoint_branch_ledger.hpp",
+      "qualified_name": "amflow::ToString",
+      "declaration": "std::string ToString(FeynmanPrescription prescription)",
+      "occurrences": [
+        {
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/endpoint_local_model.hpp",
+      "qualified_name": "amflow::AnalyzeEtaEndpointLocalModel",
+      "declaration": "EtaEndpointLocalModelAnalysis AnalyzeEtaEndpointLocalModel( const DESystem& system, const ProblemSpec& spec, const EtaContinuationPlan& plan, int extraction_order = 4)",
+      "occurrences": [
+        {
+          "line": 36
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::BuiltinEtaModes",
+      "declaration": "std::vector<std::string> BuiltinEtaModes()",
+      "occurrences": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::EtaMode::Name",
+      "declaration": "virtual std::string Name() const = 0",
+      "occurrences": [
+        {
+          "line": 25
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::EtaMode::Plan",
+      "declaration": "virtual EtaInsertionDecision Plan(const ProblemSpec& spec) const = 0",
+      "occurrences": [
+        {
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::EtaMode::~EtaMode",
+      "declaration": "virtual ~EtaMode() = default",
+      "occurrences": [
+        {
+          "line": 23
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::MakeBuiltinEtaMode",
+      "declaration": "std::shared_ptr<EtaMode> MakeBuiltinEtaMode(const std::string& name)",
+      "occurrences": [
+        {
+          "line": 30
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::PlanAmfOptionsEtaMode",
+      "declaration": "EtaInsertionDecision PlanAmfOptionsEtaMode( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes)",
+      "occurrences": [
+        {
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::PlanBuiltinAmfOptionsEtaMode",
+      "declaration": "EtaInsertionDecision PlanBuiltinAmfOptionsEtaMode( const ProblemSpec& spec, const AmfOptions& amf_options)",
+      "occurrences": [
+        {
+          "line": 34
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/eta_mode.hpp",
+      "qualified_name": "amflow::ResolveEtaMode",
+      "declaration": "std::shared_ptr<EtaMode> ResolveEtaMode( const std::string& name, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes)",
+      "occurrences": [
+        {
+          "line": 31
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform",
+      "declaration": "std::vector<LightlikeGaugeLinkSixMasterEndpointTerms> ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform( const LightlikeGaugeLinkRuntimeState& state, const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms, const std::string& epsilon_sample, int max_power = 12)",
+      "occurrences": [
+        {
+          "line": 309
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::ApplyLightlikeGaugeLinkPowerNormalization",
+      "declaration": "std::vector<LightlikeGaugeLinkTargetNormalization> ApplyLightlikeGaugeLinkPowerNormalization( const std::vector<TargetIntegral>& targets, const std::vector<std::size_t>& affected_propagator_indices, const std::string& variable = )",
+      "occurrences": [
+        {
+          "line": 293
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::ApplyLightlikeGaugeLinkReviewedDownstreamEndpointPublication",
+      "declaration": "std::vector<LightlikeGaugeLinkSixMasterEndpointTerms> ApplyLightlikeGaugeLinkReviewedDownstreamEndpointPublication( const LightlikeGaugeLinkRuntimeState& state, const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms, const std::string& epsilon_sample)",
+      "occurrences": [
+        {
+          "line": 316
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkContourPlanAudit",
+      "declaration": "LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit( const std::vector<std::vector<std::string>>& diffeq_matrix, const std::vector<std::string>& epsilon_samples, const std::string& variable = , const std::string& boundary_point = , const std::string& target_point = )",
+      "occurrences": [
+        {
+          "line": 351
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit",
+      "declaration": "LightlikeGaugeLinkSelectedCoefficientAudit BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit( const LightlikeGaugeLinkRuntimeState& state)",
+      "occurrences": [
+        {
+          "line": 365
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkFrobeniusRecurrenceAudit",
+      "declaration": "LightlikeGaugeLinkFrobeniusRecurrenceAudit BuildLightlikeGaugeLinkFrobeniusRecurrenceAudit( const std::vector<std::vector<std::string>>& diffeq_matrix, const std::vector<std::string>& epsilon_samples, const std::string& variable = , std::size_t recurrence_order = 12)",
+      "occurrences": [
+        {
+          "line": 344
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkIndicialAudit",
+      "declaration": "LightlikeGaugeLinkIndicialAudit BuildLightlikeGaugeLinkIndicialAudit( const std::vector<std::vector<std::string>>& diffeq_matrix, const std::vector<std::string>& epsilon_samples, const std::string& variable = )",
+      "occurrences": [
+        {
+          "line": 339
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkNormalizeMatSourceFormAudit",
+      "declaration": "LightlikeGaugeLinkNormalizeMatSourceFormAudit BuildLightlikeGaugeLinkNormalizeMatSourceFormAudit( const LightlikeGaugeLinkRuntimeState& state)",
+      "occurrences": [
+        {
+          "line": 369
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkRetainedStateScaffold",
+      "declaration": "LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold( const LightlikeGaugeLinkRuntimeState& state)",
+      "occurrences": [
+        {
+          "line": 358
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkSquareFamily",
+      "declaration": "LightlikeGaugeLinkSquareFamilyResult BuildLightlikeGaugeLinkSquareFamily( const ProblemSpec& spec, const std::string& variable = )",
+      "occurrences": [
+        {
+          "line": 289
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::BuildLightlikeGaugeLinkTransportScaffold",
+      "declaration": "LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkTransportScaffold( const ProblemSpec& spec, const LightlikeGaugeLinkRuntimeState& state)",
+      "occurrences": [
+        {
+          "line": 361
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::EvaluateLightlikeGaugeLinkNormalizeMatSourceCoefficient",
+      "declaration": "std::string EvaluateLightlikeGaugeLinkNormalizeMatSourceCoefficient( const LightlikeGaugeLinkNormalizeMatSourceTerm& term, const std::string& epsilon_sample)",
+      "occurrences": [
+        {
+          "line": 373
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts",
+      "declaration": "LightlikeGaugeLinkReducedFinitePartResult EvaluateLightlikeGaugeLinkReducedFiniteParts( const std::vector<TargetIntegral>& targets, const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms, const std::vector<LightlikeGaugeLinkTargetReductionTerm>& target_reduction_terms, const std::string& variable = )",
+      "occurrences": [
+        {
+          "line": 302
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::ExtractLightlikeGaugeLinkEndpointFinitePart",
+      "declaration": "LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart( const std::vector<LightlikeGaugeLinkFinitePartTerm>& terms)",
+      "occurrences": [
+        {
+          "line": 299
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::IsLightlikeGaugeLinkEtaZeroRuntimeState",
+      "declaration": "bool IsLightlikeGaugeLinkEtaZeroRuntimeState( const LightlikeGaugeLinkRuntimeState& state)",
+      "occurrences": [
+        {
+          "line": 284
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::MakeReviewedLightlikeGaugeLinkProblemSpec",
+      "declaration": "ProblemSpec MakeReviewedLightlikeGaugeLinkProblemSpec()",
+      "occurrences": [
+        {
+          "line": 287
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::ParseLightlikeGaugeLinkDiffeqMatrixRaw",
+      "declaration": "std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw( const std::string& diffeq_raw)",
+      "occurrences": [
+        {
+          "line": 336
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::ParseLightlikeGaugeLinkRetainedTargetReduction",
+      "declaration": "std::vector<LightlikeGaugeLinkTargetReductionTerm> ParseLightlikeGaugeLinkRetainedTargetReduction( const LightlikeGaugeLinkRuntimeState& state)",
+      "occurrences": [
+        {
+          "line": 327
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::ParseLightlikeGaugeLinkTargetReductionRaw",
+      "declaration": "std::vector<LightlikeGaugeLinkTargetReductionTerm> ParseLightlikeGaugeLinkTargetReductionRaw( const std::string& reduction_raw, const std::string& variable = )",
+      "occurrences": [
+        {
+          "line": 322
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/lightlike_propagator.hpp",
+      "qualified_name": "amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms",
+      "declaration": "LightlikeGaugeLinkEndpointTransportResult TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms( const LightlikeGaugeLinkRuntimeState& state, const std::vector<LightlikeGaugeLinkFiniteBoundarySample>& boundary_samples)",
+      "occurrences": [
+        {
+          "line": 331
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+      "qualified_name": "amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62",
+      "declaration": "PhysicalKinematicsGuardrailAssessment AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62( const ProblemSpec& spec, const std::string& invariant_name, const std::string& start_location, const std::string& target_location, bool allow_unlabeled_reviewed_raw_expressions)",
+      "occurrences": [
+        {
+          "line": 38
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+      "qualified_name": "amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62",
+      "declaration": "PhysicalKinematicsGuardrailAssessment AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62( const ProblemSpec& spec, const std::string& invariant_name, const std::string& start_location, const std::string& target_location, bool allow_unlabeled_reviewed_raw_expressions, bool fail_on_malformed_reviewed_segment)",
+      "occurrences": [
+        {
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+      "qualified_name": "amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62",
+      "declaration": "PhysicalKinematicsGuardrailAssessment AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62( const ProblemSpec& spec, const std::string& start_location, const std::string& target_location)",
+      "occurrences": [
+        {
+          "line": 53
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+      "qualified_name": "amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62",
+      "declaration": "PhysicalKinematicsGuardrailAssessment AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62( const ProblemSpec& spec, const std::string& start_location, const std::string& target_location, bool allow_unlabeled_reviewed_raw_expressions)",
+      "occurrences": [
+        {
+          "line": 46
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+      "qualified_name": "amflow::AssessPhysicalKinematicsForBatch62",
+      "declaration": "PhysicalKinematicsGuardrailAssessment AssessPhysicalKinematicsForBatch62( const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+      "qualified_name": "amflow::DescribeReviewedPhysicalKinematicsSubset",
+      "declaration": "std::string DescribeReviewedPhysicalKinematicsSubset()",
+      "occurrences": [
+        {
+          "line": 24
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_provider.hpp",
+      "qualified_name": "amflow::AttachBoundaryConditionsFromProvider",
+      "declaration": "SolveRequest AttachBoundaryConditionsFromProvider(const SolveRequest& request, const BoundaryProvider& provider)",
+      "occurrences": [
+        {
+          "line": 22
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_provider.hpp",
+      "qualified_name": "amflow::AttachBoundaryConditionsFromProviderRegistry",
+      "declaration": "SolveRequest AttachBoundaryConditionsFromProviderRegistry( const SolveRequest& request, const std::vector<std::shared_ptr<BoundaryProvider>>& providers)",
+      "occurrences": [
+        {
+          "line": 24
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_provider.hpp",
+      "qualified_name": "amflow::BoundaryProvider::Provide",
+      "declaration": "virtual BoundaryCondition Provide(const DESystem& system, const BoundaryRequest& request) const = 0",
+      "occurrences": [
+        {
+          "line": 18
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_provider.hpp",
+      "qualified_name": "amflow::BoundaryProvider::Strategy",
+      "declaration": "virtual std::string Strategy() const = 0",
+      "occurrences": [
+        {
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_provider.hpp",
+      "qualified_name": "amflow::BoundaryProvider::~BoundaryProvider",
+      "declaration": "virtual ~BoundaryProvider() = default",
+      "occurrences": [
+        {
+          "line": 15
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_provider.hpp",
+      "qualified_name": "amflow::MakeDeferredCutkoskyPhaseSpaceBoundaryProviderRegistry",
+      "declaration": "std::vector<std::shared_ptr<BoundaryProvider>> MakeDeferredCutkoskyPhaseSpaceBoundaryProviderRegistry()",
+      "occurrences": [
+        {
+          "line": 30
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_provider.hpp",
+      "qualified_name": "amflow::MakeDeferredEtaInfinityBoundaryProviderRegistry",
+      "declaration": "std::vector<std::shared_ptr<BoundaryProvider>> MakeDeferredEtaInfinityBoundaryProviderRegistry()",
+      "occurrences": [
+        {
+          "line": 28
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/boundary_request.hpp",
+      "qualified_name": "amflow::AttachManualBoundaryConditions",
+      "declaration": "SolveRequest AttachManualBoundaryConditions( const SolveRequest& request, const std::vector<BoundaryCondition>& explicit_boundary_conditions)",
+      "occurrences": [
+        {
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::BuildComplexNumericEvaluationPoint",
+      "declaration": "NumericEvaluationPoint BuildComplexNumericEvaluationPoint(const ProblemSpec& spec)",
+      "occurrences": [
+        {
+          "line": 45
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::EvaluateCoefficientExpression",
+      "declaration": "ExactRational EvaluateCoefficientExpression(const std::string& expression, const NumericEvaluationPoint& evaluation_point)",
+      "occurrences": [
+        {
+          "line": 38
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::EvaluateCoefficientMatrix",
+      "declaration": "ExactRationalMatrix EvaluateCoefficientMatrix(const DESystem& system, const std::string& variable_name, const NumericEvaluationPoint& evaluation_point)",
+      "occurrences": [
+        {
+          "line": 41
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::EvaluateComplexCoefficientExpression",
+      "declaration": "ExactComplexRational EvaluateComplexCoefficientExpression( const std::string& expression, const NumericEvaluationPoint& evaluation_point)",
+      "occurrences": [
+        {
+          "line": 47
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::EvaluateComplexCoefficientMatrix",
+      "declaration": "ExactComplexRationalMatrix EvaluateComplexCoefficientMatrix( const DESystem& system, const std::string& variable_name, const NumericEvaluationPoint& evaluation_point)",
+      "occurrences": [
+        {
+          "line": 51
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::EvaluateComplexPointExpression",
+      "declaration": "ExactComplexRational EvaluateComplexPointExpression( const std::string& variable_name, const std::string& point_expression, const NumericEvaluationPoint& evaluation_point)",
+      "occurrences": [
+        {
+          "line": 56
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::ExactComplexRational::IsReal",
+      "declaration": "bool IsReal() const",
+      "occurrences": [
+        {
+          "line": 27
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::ExactComplexRational::ToString",
+      "declaration": "std::string ToString() const",
+      "occurrences": [
+        {
+          "line": 28
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::ExactRational::IsZero",
+      "declaration": "bool IsZero() const",
+      "occurrences": [
+        {
+          "line": 16
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/coefficient_evaluator.hpp",
+      "qualified_name": "amflow::ExactRational::ToString",
+      "declaration": "std::string ToString() const",
+      "occurrences": [
+        {
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/precision_policy.hpp",
+      "qualified_name": "amflow::DescribeAmfSolveRuntimePolicy",
+      "declaration": "std::string DescribeAmfSolveRuntimePolicy(const AmfSolveRuntimePolicy& policy)",
+      "occurrences": [
+        {
+          "line": 50
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/precision_policy.hpp",
+      "qualified_name": "amflow::DescribePrecisionPolicy",
+      "declaration": "std::string DescribePrecisionPolicy(const PrecisionPolicy& policy)",
+      "occurrences": [
+        {
+          "line": 49
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/precision_policy.hpp",
+      "qualified_name": "amflow::EvaluatePrecision",
+      "declaration": "PrecisionDecision EvaluatePrecision(const PrecisionPolicy& policy, const PrecisionObservation& observation)",
+      "occurrences": [
+        {
+          "line": 45
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/precision_policy.hpp",
+      "qualified_name": "amflow::EvaluatePrecisionBudget",
+      "declaration": "PrecisionDecision EvaluatePrecisionBudget(const PrecisionPolicy& policy, int requested_digits)",
+      "occurrences": [
+        {
+          "line": 47
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::BootstrapSeriesSolver::Solve",
+      "declaration": "SolverDiagnostics Solve(const SolveRequest& request) const override",
+      "occurrences": [
+        {
+          "line": 163
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::EvaluateScalarSeriesPatchResidual",
+      "declaration": "ExactRational EvaluateScalarSeriesPatchResidual( const DESystem& system, const std::string& variable_name, const SeriesPatch& patch, const std::string& point_expression, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 195
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::EvaluateUpperTriangularMatrixSeriesPatchResidual",
+      "declaration": "ExactRationalMatrix EvaluateUpperTriangularMatrixSeriesPatchResidual( const DESystem& system, const std::string& variable_name, const UpperTriangularMatrixSeriesPatch& patch, const std::string& point_expression, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 210
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::GenerateScalarFrobeniusSeriesPatch",
+      "declaration": "ScalarFrobeniusSeriesPatch GenerateScalarFrobeniusSeriesPatch( const DESystem& system, const std::string& variable_name, const std::string& center_expression, int order, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 173
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::GenerateScalarRegularPointSeriesPatch",
+      "declaration": "SeriesPatch GenerateScalarRegularPointSeriesPatch( const DESystem& system, const std::string& variable_name, const std::string& center_expression, int order, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 166
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::GenerateUpperTriangularMatrixFrobeniusSeriesPatch",
+      "declaration": "UpperTriangularMatrixFrobeniusSeriesPatch GenerateUpperTriangularMatrixFrobeniusSeriesPatch( const DESystem& system, const std::string& variable_name, const std::string& center_expression, int order, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 187
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::GenerateUpperTriangularRegularPointSeriesPatch",
+      "declaration": "UpperTriangularMatrixSeriesPatch GenerateUpperTriangularRegularPointSeriesPatch( const DESystem& system, const std::string& variable_name, const std::string& center_expression, int order, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 180
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::MakeBootstrapSeriesSolver",
+      "declaration": "std::unique_ptr<SeriesSolver> MakeBootstrapSeriesSolver()",
+      "occurrences": [
+        {
+          "line": 866
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::MatchScalarSeriesPatches",
+      "declaration": "ScalarSeriesPatchOverlapDiagnostics MatchScalarSeriesPatches( const std::string& variable_name, const SeriesPatch& left_patch, const SeriesPatch& right_patch, const std::string& match_point_expression, const std::string& check_point_expression, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 202
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::MatchUpperTriangularMatrixSeriesPatches",
+      "declaration": "UpperTriangularMatrixSeriesPatchOverlapDiagnostics MatchUpperTriangularMatrixSeriesPatches( const std::string& variable_name, const UpperTriangularMatrixSeriesPatch& left_patch, const UpperTriangularMatrixSeriesPatch& right_patch, const std::string& match_point_expression, const std::string& check_point_expression, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 217
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SeriesSolver::Solve",
+      "declaration": "virtual SolverDiagnostics Solve(const SolveRequest& request) const = 0",
+      "occurrences": [
+        {
+          "line": 158
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SeriesSolver::SupportsReviewedComplexEtaContinuation",
+      "declaration": "virtual bool SupportsReviewedComplexEtaContinuation() const",
+      "occurrences": [
+        {
+          "line": 157
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SeriesSolver::~SeriesSolver",
+      "declaration": "virtual ~SeriesSolver() = default",
+      "occurrences": [
+        {
+          "line": 155
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const SolveRequest& request_template, const BoundaryProvider& provider, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 827
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const SolveRequest& request_template, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 820
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const SolveRequest& request_template, const std::vector<std::shared_ptr<BoundaryProvider>>& providers, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 835
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const SolveRequest& request_template, const BoundaryProvider& provider, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 784
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const SolveRequest& request_template, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 777
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries( const ProblemSpec& spec, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes, const SolveRequest& request_template, const std::vector<std::shared_ptr<BoundaryProvider>>& providers, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 792
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 647
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 662
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 744
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const AmfOptions& amf_options, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 760
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 253
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 268
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 389
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 405
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveBuiltinEtaModeListSeries",
+      "declaration": "SolverDiagnostics SolveBuiltinEtaModeListSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::vector<std::string>& eta_mode_names, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 616
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveBuiltinEtaModeListSeries",
+      "declaration": "SolverDiagnostics SolveBuiltinEtaModeListSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::vector<std::string>& eta_mode_names, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 631
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveBuiltinEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveBuiltinEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& eta_mode_name, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 585
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveBuiltinEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveBuiltinEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& eta_mode_name, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 600
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveDifferentialEquation",
+      "declaration": "SolverDiagnostics SolveDifferentialEquation(const SolveRequest& request)",
+      "occurrences": [
+        {
+          "line": 864
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveEtaGeneratedSeries",
+      "declaration": "SolverDiagnostics SolveEtaGeneratedSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 422
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveEtaGeneratedSeries",
+      "declaration": "SolverDiagnostics SolveEtaGeneratedSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 437
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveEtaModePlannedSeries",
+      "declaration": "SolverDiagnostics SolveEtaModePlannedSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaMode& eta_mode, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 453
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveEtaModePlannedSeries",
+      "declaration": "SolverDiagnostics SolveEtaModePlannedSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaMode& eta_mode, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 468
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveInvariantGeneratedSeries",
+      "declaration": "SolverDiagnostics SolveInvariantGeneratedSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& invariant_name, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits)",
+      "occurrences": [
+        {
+          "line": 225
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveInvariantGeneratedSeriesList",
+      "declaration": "SolverDiagnostics SolveInvariantGeneratedSeriesList( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::vector<std::string>& invariant_names, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits)",
+      "occurrences": [
+        {
+          "line": 239
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries( const ProblemSpec& spec, const EndingDecision& decision, const SolveRequest& request_template, const BoundaryProvider& provider, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 849
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries( const ProblemSpec& spec, const EndingDecision& decision, const SolveRequest& request_template, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 843
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries( const ProblemSpec& spec, const EndingDecision& decision, const SolveRequest& request_template, const std::vector<std::shared_ptr<BoundaryProvider>>& providers, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 856
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries( const ProblemSpec& spec, const EndingDecision& decision, const SolveRequest& request_template, const BoundaryProvider& provider, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 806
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries( const ProblemSpec& spec, const EndingDecision& decision, const SolveRequest& request_template, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 800
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries( const ProblemSpec& spec, const EndingDecision& decision, const SolveRequest& request_template, const std::vector<std::shared_ptr<BoundaryProvider>>& providers, const SeriesSolver& solver, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 813
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const AmfOptions& amf_options, const std::string& solve_kind, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 484
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const AmfOptions& amf_options, const std::string& solve_kind, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 501
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedBuiltinAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolvePlannedBuiltinAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 519
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedBuiltinAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolvePlannedBuiltinAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 535
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedResolvedAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolvePlannedResolvedAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 552
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolvePlannedResolvedAmfOptionsEtaModeSeries",
+      "declaration": "SolverDiagnostics SolvePlannedResolvedAmfOptionsEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const EtaInsertionDecision& decision, const AmfOptions& amf_options, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 568
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveResolvedEtaModeListSeries",
+      "declaration": "SolverDiagnostics SolveResolvedEtaModeListSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::vector<std::string>& eta_mode_names, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 711
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveResolvedEtaModeListSeries",
+      "declaration": "SolverDiagnostics SolveResolvedEtaModeListSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::vector<std::string>& eta_mode_names, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 727
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveResolvedEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveResolvedEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& eta_mode_name, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol = )",
+      "occurrences": [
+        {
+          "line": 678
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveResolvedEtaModeSeries",
+      "declaration": "SolverDiagnostics SolveResolvedEtaModeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, const std::string& eta_mode_name, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& eta_symbol, const std::optional<std::string>& exact_dimension_override)",
+      "occurrences": [
+        {
+          "line": 694
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol = )",
+      "occurrences": [
+        {
+          "line": 284
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol, const std::optional<std::string>& dimension_expression)",
+      "occurrences": [
+        {
+          "line": 299
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol, const std::optional<std::string>& dimension_expression, const std::optional<std::string>& amf_requested_d0)",
+      "occurrences": [
+        {
+          "line": 315
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol, const std::optional<std::string>& dimension_expression, const std::optional<std::string>& amf_requested_d0, const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy)",
+      "occurrences": [
+        {
+          "line": 332
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol, const std::optional<std::string>& dimension_expression, const std::optional<std::string>& amf_requested_d0, const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy, bool use_cache)",
+      "occurrences": [
+        {
+          "line": 350
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries",
+      "declaration": "SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries( const ProblemSpec& spec, const ParsedMasterList& master_basis, std::size_t propagator_index, const ReductionOptions& options, const ArtifactLayout& layout, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver& solver, const std::string& start_location, const std::string& target_location, const PrecisionPolicy& precision_policy, int requested_digits, const std::string& x_symbol, const std::optional<std::string>& dimension_expression, const std::optional<std::string>& amf_requested_d0, const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy, bool use_cache, bool skip_reduction)",
+      "occurrences": [
+        {
+          "line": 369
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolverDiagnostics::SolverDiagnostics",
+      "declaration": "SolverDiagnostics() = default",
+      "occurrences": [
+        {
+          "line": 72
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/series_solver.hpp",
+      "qualified_name": "amflow::SolverDiagnostics::SolverDiagnostics",
+      "declaration": "SolverDiagnostics(bool success_in, double residual_norm_in, double overlap_mismatch_in, std::string failure_code_in, std::string summary_in) : success(success_in), residual_norm(residual_norm_in), overlap_mismatch(overlap_mismatch_in), failure_code(std::move(failure_code_in)), summary(std::move(summary_in))",
+      "occurrences": [
+        {
+          "line": 73
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/singular_point_analysis.hpp",
+      "qualified_name": "amflow::ClassifyFinitePoint",
+      "declaration": "PointClassification ClassifyFinitePoint(const DESystem& system, const std::string& variable_name, const std::string& point_expression, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 25
+        }
+      ]
+    },
+    {
+      "path": "include/amflow/solver/singular_point_analysis.hpp",
+      "qualified_name": "amflow::DetectFiniteSingularPoints",
+      "declaration": "std::vector<FiniteSingularPoint> DetectFiniteSingularPoints( const DESystem& system, const std::string& variable_name, const NumericEvaluationPoint& passive_bindings)",
+      "occurrences": [
+        {
+          "line": 20
+        }
+      ]
+    }
+  ]
+}

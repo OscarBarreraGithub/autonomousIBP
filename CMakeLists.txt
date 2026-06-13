@@ -880,6 +880,26 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m5-accepted-packet-count-registry
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m5_accepted_packet_counts.py
+      --verify
+  )
+  set_tests_properties(m5-accepted-packet-count-registry PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m5-accepted-packet-count-registry-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m5_accepted_packet_counts.py
+      --self-check
+  )
+  set_tests_properties(m5-accepted-packet-count-registry-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-markdown-docs-validation
     COMMAND
       ${Python3_EXECUTABLE}

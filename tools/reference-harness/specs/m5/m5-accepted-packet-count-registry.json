@@ -1,0 +1,52 @@
+{
+  "counting_policy": [
+    "Counts each entry in the verified committed M5 packet provenance manifest as one accepted M5 packet.",
+    "The source-lane category is derived from the accepted packet output path lane marker.",
+    "Packet mode is the canonical packet_id suffix after removing the example/runtime_feature/packet channel prefix.",
+    "Pinned values are minimum floors so future additions may raise counts without weakening this gate."
+  ],
+  "minimum_counts": {
+    "by_channel": {
+      "example_comparison": 10,
+      "packet_artifact": 2,
+      "runtime_feature_evidence": 8
+    },
+    "by_packet_kind": {
+      "accepted-example-comparison": 10,
+      "accepted-runtime-feature-evidence": 8,
+      "m5-feature-surface": 1,
+      "m5-qualification": 1
+    },
+    "by_packet_mode": {
+      "arbitrary_D0": 1,
+      "automatic_loop": 1,
+      "automatic_phasespace": 1,
+      "automatic_vs_manual": 1,
+      "complex_kinematics": 2,
+      "differential_equation_solver": 1,
+      "feynman_prescription": 2,
+      "fixed_eps": 1,
+      "linear_propagator": 1,
+      "linear_propagators": 1,
+      "m5_feature_surface": 1,
+      "m5_qualification": 1,
+      "phase_space_integration": 1,
+      "singular_kinematics_guardrails": 1,
+      "spacetime_dimension": 1,
+      "user_defined_amfmode": 1,
+      "user_defined_ending": 1,
+      "user_defined_hooks": 1
+    },
+    "by_source_lane": {
+      "lane39": 7,
+      "lane45": 8,
+      "lane50": 4,
+      "lane62": 1
+    }
+  },
+  "minimum_total_count": 20,
+  "schema_version": 1,
+  "scope": "m5-accepted-packet-count-registry",
+  "source_m5_packet": "tools/reference-harness/specs/m5/m5-qualification-lane62.json",
+  "source_manifest": "tools/reference-harness/specs/m5/lane63/m5-packet-provenance.json"
+}

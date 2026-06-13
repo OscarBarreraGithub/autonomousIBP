@@ -2,8 +2,8 @@
   "schema_version": 1,
   "scope": "release-ctest",
   "tool": "ctest-execution-time-baseline",
-  "baseline_commit": "c6c7298977d096ea6fd315a5cac515619b775395",
-  "baseline_captured_at_utc": "2026-06-13T11:39:34Z",
+  "baseline_commit": "c7194f027ac5ca7137a6d88807d189d5a88f7fac",
+  "baseline_captured_at_utc": "2026-06-13T13:47:55Z",
   "tolerance_multiplier": 3.0,
   "ctest_parallel": 2,
   "enforcement": "CTest TIMEOUT is set to max_seconds for each baselined test at configure time.",
@@ -41,8 +41,24 @@
       "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
     }
   ],
-  "test_count": 120,
+  "test_count": 126,
   "tests": [
+    {
+      "name": "amflow-cli-binary-size",
+      "baseline_seconds": 20.0,
+      "max_seconds": 60.0,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "Completed",
+      "capture_order": 63
+    },
+    {
+      "name": "amflow-cli-binary-size-self-check",
+      "baseline_seconds": 0.12,
+      "max_seconds": 0.36,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "Completed",
+      "capture_order": 64
+    },
     {
       "name": "amflow-compile-warning-baseline",
       "baseline_seconds": 60.0,
@@ -524,6 +540,22 @@
       "capture_order": 60
     },
     {
+      "name": "m5-accepted-packet-count-registry",
+      "baseline_seconds": 8.24,
+      "max_seconds": 24.72,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "Completed",
+      "capture_order": 70
+    },
+    {
+      "name": "m5-accepted-packet-count-registry-self-check",
+      "baseline_seconds": 22.96,
+      "max_seconds": 68.88,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "Completed",
+      "capture_order": 71
+    },
+    {
       "name": "m5-golden-fingerprint-pins",
       "baseline_seconds": 0.1,
       "max_seconds": 0.3,
@@ -666,6 +698,22 @@
       "status_at_capture": "passed",
       "completion_status_at_capture": "passed",
       "capture_order": 78
+    },
+    {
+      "name": "m7-release-doc-file-counts",
+      "baseline_seconds": 0.1,
+      "max_seconds": 0.3,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "Completed",
+      "capture_order": 76
+    },
+    {
+      "name": "m7-release-doc-file-counts-self-check",
+      "baseline_seconds": 0.11,
+      "max_seconds": 0.33,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "Completed",
+      "capture_order": 77
     },
     {
       "name": "m7-release-doc-metadata-fields",

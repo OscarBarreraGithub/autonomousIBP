@@ -184,6 +184,8 @@ def configure_build_and_test(root: Path, build_dir: Path, manifest: dict[str, An
             "-DCMAKE_BUILD_TYPE=Debug",
             "-DBUILD_TESTING=ON",
             "-DAMFLOW_ENABLE_COVERAGE_BASELINE_GATE=OFF",
+            "-DAMFLOW_ENABLE_CTEST_TIME_BASELINE_GATE=OFF",
+            "-DAMFLOW_ENABLE_CTEST_TEST_COUNT_GATE=OFF",
             "-DAMFLOW_WITH_GINAC=OFF",
             "-DAMFLOW_WITH_MPFR=OFF",
             "-DAMFLOW_WITH_YAML_CPP=OFF",

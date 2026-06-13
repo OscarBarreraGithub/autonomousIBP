@@ -8,6 +8,7 @@ include(CMakePackageConfigHelpers)
 
 option(AMFLOW_ENABLE_COVERAGE_BASELINE_GATE "Enable the coverage baseline CTest gate." ON)
 option(AMFLOW_ENABLE_CTEST_TIME_BASELINE_GATE "Enable the CTest execution-time baseline gate." ON)
+option(AMFLOW_ENABLE_CTEST_TEST_COUNT_GATE "Enable the CTest configured-test-count gate." ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -1512,6 +1513,32 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_ctest_time_baseline.py
         --self-check)
     set_tests_properties(ctest-execution-time-baseline-self-check PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  endif()
+
+  if(AMFLOW_ENABLE_CTEST_TEST_COUNT_GATE)
+    add_test(
+      NAME ctest-test-count-registry
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_ctest_test_count.py
+        --verify
+        --registry
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/release/ctest-test-count-registry.json
+        --build-dir
+        ${CMAKE_CURRENT_BINARY_DIR}
+        --ctest
+        ${CMAKE_CTEST_COMMAND})
+    set_tests_properties(ctest-test-count-registry PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    add_test(
+      NAME ctest-test-count-registry-self-check
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_ctest_test_count.py
+        --self-check)
+    set_tests_properties(ctest-test-count-registry-self-check PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   endif()
 

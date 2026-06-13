@@ -15,6 +15,30 @@
     {
       "name": "ctest-execution-time-baseline-self-check",
       "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
+    },
+    {
+      "name": "m7-release-doc-file-counts",
+      "reason": "This registry gate is enforced by a separate release-doc file-count pin and is not part of the captured timing baseline."
+    },
+    {
+      "name": "m7-release-doc-file-counts-self-check",
+      "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
+    },
+    {
+      "name": "amflow-cli-binary-size",
+      "reason": "This registry gate is enforced by a separate amflow-cli binary-size pin and is not part of the captured timing baseline."
+    },
+    {
+      "name": "amflow-cli-binary-size-self-check",
+      "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
+    },
+    {
+      "name": "ctest-test-count-registry",
+      "reason": "This registry gate is enforced by a separate configured-test-count pin and is not part of the captured timing baseline."
+    },
+    {
+      "name": "ctest-test-count-registry-self-check",
+      "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
     }
   ],
   "test_count": 120,

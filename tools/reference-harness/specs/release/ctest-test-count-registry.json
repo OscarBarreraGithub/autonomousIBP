@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "scope": "release-ctest-test-count-registry",
+  "baseline_source_commit": "c7194f027ac5ca7137a6d88807d189d5a88f7fac",
+  "baseline_generated_at_utc": "2026-06-13T13:44:44Z",
+  "baseline_command": "ctest -N --test-dir build",
+  "observed_total_tests_before_gate": 126,
+  "gate_added_tests": [
+    "ctest-test-count-registry",
+    "ctest-test-count-registry-self-check"
+  ],
+  "minimum_total_tests": 128,
+  "regression_policy": "Fail if the configured CTest test count drops below minimum_total_tests."
+}

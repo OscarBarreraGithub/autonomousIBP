@@ -90,6 +90,16 @@ it does not create benchmark evidence or change numeric validation thresholds.
 | --- | --- | --- |
 | [`verify_ctest_time_baseline.py`](../../tools/reference-harness/scripts/verify_ctest_time_baseline.py) | Write or validate the release CTest timing registry, confirm all configured tests are baselined or explicitly excluded, and verify CMake applied each pinned 3x timeout window. | `ctest-execution-time-baseline` and `ctest-execution-time-baseline-self-check`. |
 
+## CTest Test-Count Registry Gate
+
+This gate records the configured CTest total and fails if future CTest coverage
+drops below the pinned count. It is a deletion guard only; it does not execute
+tests or change per-test behavior.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_ctest_test_count.py`](../../tools/reference-harness/scripts/verify_ctest_test_count.py) | Validate the configured CTest test count against the committed release registry and reject duplicate configured test names. | `ctest-test-count-registry` and `ctest-test-count-registry-self-check`. |
+
 ## Python Type Baseline Gate
 
 This gate records the current type-checking posture for repo-local Python tools

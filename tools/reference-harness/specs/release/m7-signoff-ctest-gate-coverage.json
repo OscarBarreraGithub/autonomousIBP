@@ -253,6 +253,14 @@
       "reason": "Release signoff must keep the CTest execution-time baseline verifier's schema and 3x-window fixtures live."
     },
     {
+      "name": "ctest-test-count-registry",
+      "reason": "Release signoff must fail if configured CTest coverage drops below the pinned total test-count floor."
+    },
+    {
+      "name": "ctest-test-count-registry-self-check",
+      "reason": "Release signoff must keep the CTest test-count verifier's count-regression and duplicate-name fixtures live."
+    },
+    {
       "name": "parity-status-sidecar-audit",
       "reason": "Release signoff must verify b61n and b63n parity status sidecars remain internally coherent with accepted release scope."
     }

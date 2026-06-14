@@ -57,6 +57,27 @@ It is a size guard only; it does not classify code quality or release readiness.
 | --- | --- | --- |
 | [`verify_source_sloc_baseline.py`](../../tools/reference-harness/scripts/verify_source_sloc_baseline.py) | Count tracked source lines under `lib/`, `include/`, `src/`, and `tools/` by C++, Python, CMake, and total categories, then compare them with the pinned tolerance windows. | `source-sloc-baseline` and `source-sloc-baseline-self-check`. |
 
+## Git-Tracked File Extension Inventory Gate
+
+This gate records `git ls-files` counts grouped by filename extension and
+fails if the tracked `.cpp`, `.hpp`, `.py`, or `.md` category counts drop below
+the pinned source inventory. Other extension counts remain visible in the
+registry for review.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_git_tracked_file_inventory.py`](../../tools/reference-harness/scripts/verify_git_tracked_file_inventory.py) | Group tracked files by final filename extension, preserve the full extension inventory, and enforce source-category floors for `.cpp`, `.hpp`, `.py`, and `.md`. | `git-tracked-file-extension-inventory` and `git-tracked-file-extension-inventory-self-check`. |
+
+## Physics Channel Master Count Gate
+
+This gate records retained master-integral counts for the reviewed b61n, b63n,
+and b64ag physics-channel specs and fails if any channel drops below its pinned
+count.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`verify_physics_channel_master_counts.py`](../../tools/reference-harness/scripts/verify_physics_channel_master_counts.py) | Verify retained master-integral counts for the b61n, b63n, and b64ag release-channel specs against the pinned registry. | `physics-channel-master-count-registry` and `physics-channel-master-count-registry-self-check`. |
+
 ## Environment Variable Registry Gate
 
 This gate documents repo-local build/runtime environment-variable reads and

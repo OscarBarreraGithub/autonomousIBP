@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "scope": "git-tracked-file-extension-inventory",
+  "baseline_source_commit": "7c727b537e35096eda4914f2a0900d1dd6afb691",
+  "baseline_generated_at_utc": "2026-06-14T20:10:52Z",
+  "baseline_command": "git ls-files grouped by final filename extension; basenames without dots counted in tracked_file_counts.no_extension_count",
+  "tracked_file_counts": {
+    "total_count": 793,
+    "no_extension_count": 10,
+    "counts_by_extension": {
+      ".cmake": 1,
+      ".cpp": 47,
+      ".csv": 1,
+      ".gitignore": 1,
+      ".hpp": 44,
+      ".html": 5,
+      ".in": 2,
+      ".json": 294,
+      ".m": 7,
+      ".md": 136,
+      ".pdf": 40,
+      ".py": 102,
+      ".rst": 1,
+      ".sbatch": 14,
+      ".sh": 1,
+      ".stderr": 17,
+      ".stdout": 7,
+      ".template": 2,
+      ".tsv": 1,
+      ".txt": 19,
+      ".url": 2,
+      ".wl": 28,
+      ".yaml": 11
+    }
+  },
+  "tracked_source_extensions": [
+    ".cpp",
+    ".hpp",
+    ".py",
+    ".md"
+  ],
+  "minimum_tracked_source_counts": {
+    ".cpp": 47,
+    ".hpp": 44,
+    ".py": 102,
+    ".md": 136
+  },
+  "regression_policy": "Fail if any tracked-source extension count (.cpp, .hpp, .py, .md) drops below its pinned minimum."
+}

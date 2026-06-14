@@ -9,6 +9,7 @@ include(CMakePackageConfigHelpers)
 option(AMFLOW_ENABLE_COVERAGE_BASELINE_GATE "Enable the coverage baseline CTest gate." ON)
 option(AMFLOW_ENABLE_CTEST_TIME_BASELINE_GATE "Enable the CTest execution-time baseline gate." ON)
 option(AMFLOW_ENABLE_CTEST_TEST_COUNT_GATE "Enable the CTest configured-test-count gate." ON)
+option(AMFLOW_ENABLE_GIT_TRACKED_FILE_INVENTORY_GATE "Enable the git-tracked file inventory CTest gate." ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -246,6 +247,31 @@ if(BUILD_TESTING)
   )
   set_tests_properties(amflow-public-header-count-registry-self-check PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  if(AMFLOW_ENABLE_GIT_TRACKED_FILE_INVENTORY_GATE)
+    add_test(
+      NAME git-tracked-file-extension-inventory
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_git_tracked_file_inventory.py
+        --verify
+        --registry
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/specs/release/git-tracked-file-extension-inventory.json
+    )
+    set_tests_properties(git-tracked-file-extension-inventory PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      TIMEOUT 180)
+
+    add_test(
+      NAME git-tracked-file-extension-inventory-self-check
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_git_tracked_file_inventory.py
+        --self-check
+    )
+    set_tests_properties(git-tracked-file-extension-inventory-self-check PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  endif()
 
   add_test(
     NAME physics-channel-master-count-registry

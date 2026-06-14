@@ -49,7 +49,7 @@
       "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
     }
   ],
-  "test_count": 128,
+  "test_count": 132,
   "tests": [
     {
       "name": "amflow-cli-binary-size",
@@ -532,6 +532,22 @@
       "capture_order": 58
     },
     {
+      "name": "git-tracked-file-extension-inventory",
+      "baseline_seconds": 0.2,
+      "max_seconds": 0.6,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "passed",
+      "capture_order": 129
+    },
+    {
+      "name": "git-tracked-file-extension-inventory-self-check",
+      "baseline_seconds": 0.25,
+      "max_seconds": 0.75,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "passed",
+      "capture_order": 130
+    },
+    {
       "name": "include-order-baseline",
       "baseline_seconds": 0.16,
       "max_seconds": 0.48,
@@ -546,6 +562,22 @@
       "status_at_capture": "passed",
       "completion_status_at_capture": "passed",
       "capture_order": 60
+    },
+    {
+      "name": "physics-channel-master-count-registry",
+      "baseline_seconds": 0.15,
+      "max_seconds": 0.45,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "passed",
+      "capture_order": 131
+    },
+    {
+      "name": "physics-channel-master-count-registry-self-check",
+      "baseline_seconds": 0.15,
+      "max_seconds": 0.45,
+      "status_at_capture": "passed",
+      "completion_status_at_capture": "passed",
+      "capture_order": 132
     },
     {
       "name": "m5-accepted-packet-count-registry",

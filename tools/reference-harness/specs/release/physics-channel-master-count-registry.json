@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "scope": "physics-channel-master-count-registry",
+  "baseline_source_commit": "5e73fb8085d2a3889479527866ae0371fe037525",
+  "baseline_generated_at_utc": "2026-06-14T19:07:48Z",
+  "counting_rule": "Count the structured entries in each retained AMFlow state spec's configured master field. The count is per b61n/b63n/b64ag physics channel and uses unique labels rendered as family[index,...].",
+  "channels": [
+    {
+      "surface": "b61n",
+      "channel": "complex_kinematics",
+      "source_spec": "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+      "master_field": "masters",
+      "minimum_master_count": 7,
+      "baseline_master_labels": [
+        "box[0,0,0,1]",
+        "box[1,0,1,0]",
+        "box[1,0,0,1]",
+        "box[0,1,0,1]",
+        "box[0,0,1,1]",
+        "box[1,0,1,1]",
+        "box[1,1,1,1]"
+      ]
+    },
+    {
+      "surface": "b63n",
+      "channel": "automatic_phasespace",
+      "source_spec": "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json",
+      "master_field": "masters",
+      "minimum_master_count": 6,
+      "baseline_master_labels": [
+        "phase[1,0,1,0,1,0,0]",
+        "phase[1,-1,1,0,1,0,0]",
+        "phase[1,1,1,0,1,0,0]",
+        "phase[1,1,1,1,1,0,0]",
+        "phase[1,1,1,0,1,0,1]",
+        "phase[1,1,1,1,1,1,1]"
+      ]
+    },
+    {
+      "surface": "b64ag",
+      "channel": "linear_propagator",
+      "source_spec": "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json",
+      "master_field": "masters",
+      "minimum_master_count": 9,
+      "baseline_master_labels": [
+        "gauge[1,1,1,1,1,0,-1,0,0]",
+        "gauge[1,1,1,1,1,0,0,-1,0]",
+        "gauge[1,1,1,1,1,0,0,0,-1]",
+        "gauge[1,1,1,0,1,0,0,0,0]",
+        "gauge[1,1,1,-1,1,0,0,0,0]",
+        "gauge[0,1,1,1,1,0,0,0,0]",
+        "gauge[0,1,1,1,1,-1,0,0,0]",
+        "gauge[1,1,1,1,1,0,0,0,0]",
+        "gauge[1,1,1,1,1,-1,0,0,0]"
+      ]
+    }
+  ],
+  "regression_policy": "Fail if any pinned b61n/b63n/b64ag channel's retained master-integral count drops below its minimum. Missing source specs and duplicate master labels are treated as failures."
+}

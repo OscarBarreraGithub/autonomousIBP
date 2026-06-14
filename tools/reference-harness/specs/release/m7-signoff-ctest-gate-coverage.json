@@ -161,6 +161,14 @@
       "reason": "Release signoff must keep the M5 fingerprint validator's drift fixture live."
     },
     {
+      "name": "golden-fixture-total-bytes-registry",
+      "reason": "Release signoff consumes committed golden fixtures, so their file count and total byte window must remain pinned against truncation."
+    },
+    {
+      "name": "golden-fixture-total-bytes-registry-self-check",
+      "reason": "Release signoff must keep the golden fixture total-bytes verifier's count, truncation, growth, and malformed-window fixtures live."
+    },
+    {
       "name": "m5-accepted-packet-count-registry",
       "reason": "Release signoff consumes the accepted M5 packet inventory, so packet-count drift must remain pinned."
     },

@@ -47,6 +47,14 @@
     {
       "name": "amflow-public-header-count-registry-self-check",
       "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
+    },
+    {
+      "name": "golden-fixture-total-bytes-registry",
+      "reason": "This registry gate is enforced by a separate golden fixture total-bytes pin and is not part of the captured timing baseline."
+    },
+    {
+      "name": "golden-fixture-total-bytes-registry-self-check",
+      "reason": "This verifier unit self-check is intentionally excluded from the release timing baseline."
     }
   ],
   "test_count": 132,

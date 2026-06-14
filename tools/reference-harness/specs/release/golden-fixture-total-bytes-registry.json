@@ -1,0 +1,25 @@
+{
+  "baseline_file_count": 3,
+  "baseline_generated_at_utc": "2026-06-14T00:00:00Z",
+  "baseline_source_commit": "5e73fb8085d2a3889479527866ae0371fe037525",
+  "counting_policy": [
+    "Counts every committed regular file below any directory named goldens under tools/reference-harness/specs.",
+    "The file-count pin is a floor so adding new committed golden fixtures is allowed.",
+    "The byte-total pin is enforced with an explicit lower and upper window to catch truncation and unreviewed bulk changes."
+  ],
+  "fixtures": {
+    "golden_directory_name": "goldens",
+    "root": "tools/reference-harness/specs"
+  },
+  "minimum_file_count": 3,
+  "regression_policy": "Fail if golden fixture file count drops below the pinned baseline or total committed golden bytes leave total_bytes_window.",
+  "schema_version": 1,
+  "scope": "golden-fixture-total-bytes-registry",
+  "total_bytes_window": {
+    "allowed_negative_bytes": 0,
+    "allowed_positive_bytes": 128,
+    "baseline_total_bytes": 934,
+    "maximum_total_bytes": 1062,
+    "minimum_total_bytes": 934
+  }
+}
